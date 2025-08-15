@@ -1,0 +1,258 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String       @id @default(cuid())
+  email             String       @unique
+  name              String?
+  passwordHash      String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  apiKeys           ApiKey[]
+  items             Item[]
+  collections       Collection[]
+  imports           Import[]
+  auditLogs         AuditLog[]
+  settings          String       @default("{}")
+  automationLevel   String       @default("auto-suggest")
+  preferences       String       @default("{}")
+}
+
+model ApiKey {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  provider        String   // openai, anthropic, gemini
+  encryptedKey    String
+  lastUsedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Item {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            String          // prompt, agent, rule, template, snippet, other
+  subType         String?         // More specific categorization
+  name            String
+  content         String
+  format          String          // .af, .prompt, .agent, .json, .yaml, .xml, .md, .mdc
+  metadata        String          @default("{}")
+  author          String?
+  language        String?
+  targetModels    String?         // comma-separated: openai,claude,gemini
+  sourceId        String?
+  source          Source?         @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  isCanonical     Boolean         @default(false)
+  isDuplicate     Boolean         @default(false)
+  canonicalId     String?
+  canonical       Item?           @relation("DuplicateRelation", fields: [canonicalId], references: [id], onDelete: SetNull)
+  duplicates      Item[]          @relation("DuplicateRelation")
+  versions        Version[]
+  tags            ItemTag[]
+  collections     ItemCollection[]
+  optimizations   Optimization[]
+  conversions     Conversion[]
+  auditLogs       AuditLog[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId, type])
+  @@index([name])
+}
+
+model Version {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  versionNumber   Int
+  content         String
+  metadata        String   @default("{}")
+  changeReason    String?
+  changedBy       String?  // LLM agent or user
+  approved        Boolean  @default(false)
+  approvedBy      String?
+  createdAt       DateTime @default(now())
+
+  @@unique([itemId, versionNumber])
+  @@index([itemId])
+}
+
+model Source {
+  id              String   @id @default(cuid())
+  type            String   // file, github, website
+  url             String?
+  filePath        String?
+  repoOwner       String?
+  repoName        String?
+  branch          String?
+  pathGlob        String?
+  lastImportedAt  DateTime?
+  items           Item[]
+  imports         Import[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([type])
+}
+
+model Tag {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  color           String?
+  description     String?
+  items           ItemTag[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model ItemTag {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tagId           String
+  tag             Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+
+  @@unique([itemId, tagId])
+  @@index([itemId])
+  @@index([tagId])
+}
+
+model Collection {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  color           String?
+  icon            String?
+  items           ItemCollection[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model ItemCollection {
+  id              String     @id @default(cuid())
+  itemId          String
+  item            Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  collectionId    String
+  collection      Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  position        Int        @default(0)
+  createdAt       DateTime   @default(now())
+
+  @@unique([itemId, collectionId])
+  @@index([itemId])
+  @@index([collectionId])
+}
+
+model Import {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceId        String?
+  source          Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  status          String    // pending, processing, completed, failed
+  totalFiles      Int       @default(0)
+  processedFiles  Int       @default(0)
+  failedFiles     Int       @default(0)
+  metadata        String    @default("{}")
+  errorLog        String?
+  startedAt       DateTime  @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Optimization {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  targetModel     String   // openai, claude, gemini
+  optimizedContent String
+  confidence      Float?
+  status          String   // suggested, accepted, rejected
+  metadata        String   @default("{}")
+  createdBy       String   // LLM agent
+  createdAt       DateTime @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+
+  @@index([itemId, targetModel])
+  @@index([status])
+}
+
+model Conversion {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  fromFormat      String
+  toFormat        String
+  convertedContent String
+  status          String   // suggested, accepted, rejected
+  metadata        String   @default("{}")
+  createdBy       String   // LLM agent or user
+  createdAt       DateTime @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      String?
+
+  @@index([itemId])
+  @@index([status])
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  itemId          String?
+  item            Item?    @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  action          String   // import, classify, optimize, convert, approve, reject, delete, update, etc.
+  entityType      String   // item, collection, source, etc.
+  entityId        String?
+  metadata        String   @default("{}")
+  previousValue   String?
+  newValue        String?
+  userAgent       String?
+  ipAddress       String?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([itemId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model WorkflowQueue {
+  id              String   @id @default(cuid())
+  type            String   // classification, optimization, conversion, deduplication
+  status          String   // pending, processing, completed, failed
+  priority        Int      @default(0)
+  payload         String
+  result          String?
+  error           String?
+  retryCount      Int      @default(0)
+  maxRetries      Int      @default(3)
+  scheduledFor    DateTime @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([status, priority])
+  @@index([type])
+}
