@@ -29,7 +29,7 @@ export default function ImportPage() {
   // GitHub Import State
   const [githubUrl, setGithubUrl] = useState('');
   const [branch, setBranch] = useState('main');
-  const [pathGlob, setPathGlob] = useState('**/*.{md,json,yaml,yml,xml,prompt,agent,af,mdc}');
+  const [pathGlob, setPathGlob] = useState('**/*.md,**/*.json,**/*.yaml,**/*.yml,**/*.xml,**/*.prompt,**/*.agent,**/*.af,**/*.mdc');
 
   // URL Import State
   const [webUrl, setWebUrl] = useState('');
@@ -96,8 +96,7 @@ export default function ImportPage() {
       setFiles([]);
       
       setTimeout(() => {
-        router.push('/dashboard');
-        router.refresh();
+        router.push(`/dashboard/import/review?importId=${result.importId}`);
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import failed');
@@ -138,8 +137,7 @@ export default function ImportPage() {
       setGithubUrl('');
       
       setTimeout(() => {
-        router.push('/dashboard');
-        router.refresh();
+        router.push(`/dashboard/import/review?importId=${result.importId}`);
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'GitHub import failed');
@@ -176,8 +174,7 @@ export default function ImportPage() {
       setWebUrl('');
       
       setTimeout(() => {
-        router.push('/dashboard');
-        router.refresh();
+        router.push(`/dashboard/import/review?importId=${result.importId}`);
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'URL import failed');
@@ -362,7 +359,7 @@ export default function ImportPage() {
                   <Input
                     id="path-glob"
                     type="text"
-                    placeholder="**/*.{md,json,yaml}"
+                    placeholder="**/*.md,**/*.json,**/*.yaml"
                     value={pathGlob}
                     onChange={(e) => setPathGlob(e.target.value)}
                     disabled={isImporting}

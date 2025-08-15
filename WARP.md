@@ -7,6 +7,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 ContextForge is an AI development context management platform designed to organize, import, and manage prompts, agents, rules, and templates for AI workflows. The application provides a centralized dashboard for developers to collect, categorize, and version control their AI context items from various sources including local files, GitHub repositories, and web URLs.
 
 ### Core Features
+
 - **Context Item Management**: Store and organize prompts, agents, rules, templates, and code snippets
 - **Multi-source Import**: Import from local files, GitHub repos, and URLs with intelligent parsing
 - **Version Control**: Track changes and maintain item history with approval workflows
@@ -17,6 +18,7 @@ ContextForge is an AI development context management platform designed to organi
 ## Technology Stack
 
 ### Frontend
+
 - **Next.js 15.4.6** - React framework with App Router architecture
 - **React 19.1.0** - UI library with server components
 - **TypeScript 5.x** - Type safety and enhanced development experience
@@ -26,18 +28,21 @@ ContextForge is an AI development context management platform designed to organi
 - **Monaco Editor** - Code editor for content editing
 
 ### Backend & Database
+
 - **Prisma 6.14.0** - ORM with SQLite database
 - **SQLite** - Embedded database for development and deployment
 - **JWT (jsonwebtoken)** - Authentication tokens
 - **bcryptjs** - Password hashing
 
 ### AI & External Services
+
 - **@anthropic-ai/sdk** - Claude API integration
 - **@google/generative-ai** - Gemini API integration
 - **openai** - GPT API integration
 - **octokit** - GitHub API client for repository imports
 
 ### Parsing & Utilities
+
 - **gray-matter** - YAML front matter parsing
 - **yaml** - YAML file processing
 - **xml2js** - XML parsing
@@ -82,6 +87,7 @@ contextforge-app/
 ## Development Commands
 
 ### Initial Setup
+
 ```bash
 # Install dependencies
 npm install
@@ -95,6 +101,7 @@ npm run dev
 ```
 
 ### Database Management
+
 ```bash
 # Generate Prisma client after schema changes
 npx prisma generate
@@ -110,6 +117,7 @@ npx prisma db push --force-reset
 ```
 
 ### Build & Deploy
+
 ```bash
 # Build for production
 npm run build
@@ -128,12 +136,14 @@ The application uses a comprehensive database schema centered around the `Item` 
 ### Core Models
 
 **User Model**
+
 - Authentication with email/password
 - User preferences and settings
 - API key storage for third-party services
 - Automation level configuration
 
 **Item Model** - Central entity for all context items
+
 - `type`: prompt, agent, rule, template, snippet, other
 - `format`: File format (.md, .json, .yaml, etc.)
 - `content`: Main content body
@@ -142,17 +152,20 @@ The application uses a comprehensive database schema centered around the `Item` 
 - Source attribution and canonical relationships
 
 **Collections & Organization**
+
 - `Collection`: User-defined groupings of items
 - `Tag`: Flexible tagging system with colors
 - `Source`: Track import sources (file, GitHub, website)
 
 **Version Control & Optimization**
+
 - `Version`: Track content changes with approval workflow
 - `Optimization`: AI-suggested improvements by target model
 - `Conversion`: Format conversions between item types
 - `AuditLog`: Complete activity tracking
 
 **Import System**
+
 - `Import`: Batch import tracking with status
 - `WorkflowQueue`: Background job processing
 
@@ -161,12 +174,14 @@ The application uses a comprehensive database schema centered around the `Item` 
 The application uses JWT-based authentication with the following components:
 
 ### Authentication Flow
+
 1. **Login/Register**: `app/api/auth/` endpoints handle user creation and authentication
 2. **Token Generation**: JWT tokens with 30-day expiration stored in httpOnly cookies
 3. **Middleware Protection**: `middleware.ts` guards protected routes
 4. **API Key Encryption**: Third-party API keys encrypted using AES-256-CBC
 
 ### Key Files
+
 - `lib/auth.ts` - Core authentication utilities
 - `middleware.ts` - Route protection and redirects
 - `app/api/auth/` - Authentication API endpoints
@@ -176,6 +191,7 @@ The application uses JWT-based authentication with the following components:
 The import system supports multiple sources and formats with intelligent content extraction:
 
 ### Supported Formats
+
 - **Markdown (.md)** - With frontmatter extraction and code block parsing
 - **Cursor Rules (.mdc)** - Cursor-specific rule files with YAML frontmatter
 - **JSON/YAML** - Structured data with metadata
@@ -184,11 +200,13 @@ The import system supports multiple sources and formats with intelligent content
 - **Plain Prompts (.prompt)** - Direct prompt files
 
 ### Import Sources
+
 1. **File Upload** - Drag-and-drop interface with multi-file support
 2. **GitHub Integration** - Repository scanning with glob patterns
 3. **URL Import** - Web content extraction and parsing
 
 ### Parser Logic (`lib/parsers.ts`)
+
 - **Type Detection**: Automatic classification based on content and metadata
 - **Metadata Extraction**: Preserve frontmatter, comments, and structured data
 - **Content Segmentation**: Extract multiple items from single files (e.g., code blocks)
@@ -197,24 +215,28 @@ The import system supports multiple sources and formats with intelligent content
 ## Development Workflows
 
 ### Adding New Item Types
+
 1. Update `Item.type` enum in `prisma/schema.prisma`
 2. Add type detection logic in `lib/parsers.ts`
 3. Update UI components to handle new type
 4. Add type-specific icons and styling
 
 ### Extending Parsers
+
 1. Add new format handler in `lib/parsers.ts`
 2. Update file extension detection
 3. Add MIME type support in upload components
 4. Test with sample files
 
 ### Creating API Endpoints
+
 1. Create route handler in `app/api/[route]/route.ts`
 2. Implement request validation with Zod schemas
 3. Add authentication checks if required
 4. Update TypeScript types
 
 ### Database Schema Changes
+
 1. Modify `prisma/schema.prisma`
 2. Run `npx prisma generate`
 3. Push changes with `npx prisma db push`
@@ -225,12 +247,14 @@ The import system supports multiple sources and formats with intelligent content
 The application uses **shadcn/ui** components built on Radix UI primitives:
 
 ### Key Components
+
 - `DashboardLayout` - Main application shell with navigation
 - `Card`, `Button`, `Input` - Basic UI primitives
 - `Tabs`, `Dialog`, `DropdownMenu` - Interactive components
 - `Badge`, `Progress`, `Alert` - Status and feedback components
 
 ### Styling System
+
 - **Tailwind CSS** - Utility-first styling
 - **CSS Variables** - Theme customization support
 - **Dark Mode** - Built-in theme switching
@@ -239,6 +263,7 @@ The application uses **shadcn/ui** components built on Radix UI primitives:
 ## Environment Configuration
 
 ### Required Environment Variables
+
 ```bash
 # Database
 DATABASE_URL="file:./dev.db"
@@ -261,26 +286,31 @@ GITHUB_TOKEN="your-github-token"
 ### Common Issues
 
 **Database Connection**
+
 - Ensure `DATABASE_URL` is correctly set
 - Run `npx prisma generate` after schema changes
 - Check file permissions for SQLite database
 
 **Authentication Problems**
+
 - Verify `NEXTAUTH_SECRET` is set
 - Clear browser cookies if tokens are corrupted
 - Check middleware configuration for route protection
 
 **Import Parsing Errors**
+
 - Review file format and encoding
 - Check parser logs in browser console
 - Validate JSON/YAML syntax before import
 
 **Development Setup**
+
 - Use Node.js version 20+ for compatibility
 - Install dependencies with `npm install` (not yarn due to lock file)
 - Ensure TypeScript is properly configured with `tsc --noEmit`
 
 ### Debugging Commands
+
 ```bash
 # Check database contents
 npx prisma studio
@@ -307,6 +337,6 @@ npm run build
 
 ---
 
-*Last updated: January 2024*
-*Next.js Version: 15.4.6*
-*Node.js Compatibility: 20+*
+_Last updated: January 2024_
+_Next.js Version: 15.4.6_
+_Node.js Compatibility: 20+_

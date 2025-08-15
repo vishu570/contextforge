@@ -39,17 +39,26 @@ export async function POST(request: NextRequest) {
     const [, owner, repoName] = urlMatch;
     const repo = repoName.replace(/\.git$/, '');
 
-    // Get user's GitHub token if available
-    const githubApiKey = await prisma.apiKey.findFirst({
-      where: {
-        userId: user.id,
-        provider: 'github',
-      },
-    });
+    // Get GitHub token from environment or user's stored key
+    let githubToken = process.env.GITHUB_TOKEN;
+    
+    if (!githubToken) {
+      const githubApiKey = await prisma.apiKey.findFirst({
+        where: {
+          userId: user.id,
+          provider: 'github',
+        },
+      });
+      
+      if (githubApiKey) {
+        const { decryptApiKey } = await import('@/lib/auth');
+        githubToken = decryptApiKey(githubApiKey.encryptedKey);
+      }
+    }
 
     // Initialize Octokit with or without auth
     const octokit = new Octokit(
-      githubApiKey ? { auth: githubApiKey.encryptedKey } : {}
+      githubToken ? { auth: githubToken } : {}
     );
 
     // Create import record
@@ -89,8 +98,8 @@ export async function POST(request: NextRequest) {
     let totalFiles = 0;
 
     try {
-      // Get repository tree
-      const { data: tree } = await octokit.rest.git.getTree({
+      // Get repository tree - use recursive to get all files
+      const { data: treeData } = await octokit.rest.git.getTree({
         owner,
         repo,
         tree_sha: branch,
@@ -98,7 +107,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Filter files based on glob pattern
-      const matchingFiles = tree.tree.filter(item => {
+      const matchingFiles = treeData.tree.filter(item => {
         if (item.type !== 'blob' || !item.path) return false;
         
         // Convert glob pattern to work with minimatch
@@ -113,6 +122,24 @@ export async function POST(request: NextRequest) {
         where: { id: importRecord.id },
         data: { totalFiles },
       });
+
+      // If no files matched, try with all markdown files as fallback
+      if (totalFiles === 0) {
+        const mdFiles = treeData.tree.filter(item => {
+          return item.type === 'blob' && item.path && item.path.endsWith('.md');
+        });
+        
+        if (mdFiles.length > 0) {
+          matchingFiles.push(...mdFiles);
+          totalFiles = mdFiles.length;
+          
+          // Update total files count
+          await prisma.import.update({
+            where: { id: importRecord.id },
+            data: { totalFiles },
+          });
+        }
+      }
 
       // Process each matching file
       for (const file of matchingFiles) {
