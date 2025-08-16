@@ -17,6 +17,7 @@ export interface ClassificationResult {
   type: 'prompt' | 'agent' | 'rule' | 'template' | 'snippet' | 'other';
   confidence: number;
   reasoning?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface OptimizationResult {
@@ -63,24 +64,49 @@ export class LLMService {
     }
   }
 
-  async classifyContent(content: string, config?: LLMConfig): Promise<ClassificationResult> {
+
+  async classifyContent(
+    content: string, 
+    options?: {
+      name?: string;
+      currentType?: string;
+      enhancedAnalysis?: boolean;
+    },
+    config?: LLMConfig
+  ): Promise<ClassificationResult> {
     await this.initializeProviders();
     
-    const prompt = `Analyze the following content and classify it into one of these categories:
-- prompt: Instructions or prompts for AI models
-- agent: Agent definitions or configurations
-- rule: Rules, linting configs, or IDE settings
-- template: Code templates or boilerplate
-- snippet: Code snippets or examples
-- other: Anything else
+    const enhancedPrompt = options?.enhancedAnalysis ? `
+Analyze the following content and provide enhanced classification with detailed reasoning and metadata extraction.
 
-Content to classify:
+Content Name: ${options.name || 'Unknown'}
+Current Classification: ${options.currentType || 'Unknown'}
+
+Content:
 ${content}
 
-Respond with a JSON object containing:
-- type: the classification category
-- confidence: a number between 0 and 1 indicating confidence
-- reasoning: brief explanation of the classification`;
+Provide a comprehensive analysis including:
+1. Accurate type classification (prompt, agent, rule, template, snippet, other)
+2. Confidence score (0-1)
+3. Detailed reasoning for the classification
+4. Metadata extraction (category, complexity, target audience, etc.)
+5. Suggested improvements or concerns
+
+Types definition:
+- prompt: Instructions for AI to perform specific tasks
+- agent: AI persona or role definitions with specific behaviors
+- rule: Guidelines, constraints, or governance rules
+- template: Reusable structures or boilerplate content
+- snippet: Code fragments or utility functions
+- other: Content that doesn't fit other categories
+
+Respond in JSON format with fields: type, confidence, reasoning, metadata (object with extracted information)` : 
+    `Classify the following content into one of these types: prompt, agent, rule, template, snippet, other.
+
+Content:
+${content}
+
+Respond in JSON format with fields: type, confidence, reasoning`;
 
     const provider = config?.provider || this.getAvailableProvider();
     
@@ -92,9 +118,9 @@ Respond with a JSON object containing:
           if (!this.openai) throw new Error('OpenAI not configured');
           const openaiResponse = await this.openai.chat.completions.create({
             model: config?.model || 'gpt-4-turbo-preview',
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: enhancedPrompt }],
             temperature: config?.temperature || 0.3,
-            max_tokens: config?.maxTokens || 500,
+            max_tokens: config?.maxTokens || 800,
             response_format: { type: 'json_object' },
           });
           result = openaiResponse.choices[0].message.content || '{}';
@@ -104,8 +130,8 @@ Respond with a JSON object containing:
           if (!this.anthropic) throw new Error('Anthropic not configured');
           const anthropicResponse = await this.anthropic.messages.create({
             model: config?.model || 'claude-3-opus-20240229',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: config?.maxTokens || 500,
+            messages: [{ role: 'user', content: enhancedPrompt }],
+            max_tokens: config?.maxTokens || 800,
             temperature: config?.temperature || 0.3,
           });
           result = anthropicResponse.content[0].type === 'text' 
@@ -118,7 +144,7 @@ Respond with a JSON object containing:
           const model = this.genAI.getGenerativeModel({ 
             model: config?.model || 'gemini-pro' 
           });
-          const geminiResponse = await model.generateContent(prompt);
+          const geminiResponse = await model.generateContent(enhancedPrompt);
           result = geminiResponse.response.text();
           break;
           
@@ -132,9 +158,10 @@ Respond with a JSON object containing:
         type: parsed.type || 'other',
         confidence: parsed.confidence || 0.5,
         reasoning: parsed.reasoning,
+        metadata: parsed.metadata || {},
       };
     } catch (error) {
-      console.error('Classification error:', error);
+      console.error('Enhanced classification error:', error);
       // Fallback to heuristic classification
       return this.heuristicClassification(content);
     }
@@ -370,22 +397,52 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
     const lowerContent = content.toLowerCase();
     
     if (lowerContent.includes('agent') || lowerContent.includes('assistant')) {
-      return { type: 'agent', confidence: 0.6 };
+      return { 
+        type: 'agent', 
+        confidence: 0.6, 
+        reasoning: 'Contains agent or assistant keywords',
+        metadata: { heuristic: true }
+      };
     }
     if (lowerContent.includes('prompt') || lowerContent.includes('instruction')) {
-      return { type: 'prompt', confidence: 0.6 };
+      return { 
+        type: 'prompt', 
+        confidence: 0.6, 
+        reasoning: 'Contains prompt or instruction keywords',
+        metadata: { heuristic: true }
+      };
     }
     if (lowerContent.includes('rule') || lowerContent.includes('eslint') || lowerContent.includes('config')) {
-      return { type: 'rule', confidence: 0.6 };
+      return { 
+        type: 'rule', 
+        confidence: 0.6, 
+        reasoning: 'Contains rule, eslint, or config keywords',
+        metadata: { heuristic: true }
+      };
     }
     if (lowerContent.includes('template') || lowerContent.includes('boilerplate')) {
-      return { type: 'template', confidence: 0.6 };
+      return { 
+        type: 'template', 
+        confidence: 0.6, 
+        reasoning: 'Contains template or boilerplate keywords',
+        metadata: { heuristic: true }
+      };
     }
     if (lowerContent.includes('function') || lowerContent.includes('const') || lowerContent.includes('class')) {
-      return { type: 'snippet', confidence: 0.5 };
+      return { 
+        type: 'snippet', 
+        confidence: 0.5, 
+        reasoning: 'Contains function, const, or class keywords indicating code',
+        metadata: { heuristic: true }
+      };
     }
     
-    return { type: 'other', confidence: 0.3 };
+    return { 
+      type: 'other', 
+      confidence: 0.3, 
+      reasoning: 'No clear classification indicators found',
+      metadata: { heuristic: true }
+    };
   }
 
   private getAvailableProvider(): LLMProvider {

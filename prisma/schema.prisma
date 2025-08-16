@@ -22,6 +22,7 @@ model User {
   collections       Collection[]
   imports           Import[]
   auditLogs         AuditLog[]
+  folderSuggestions FolderSuggestion[]
   settings          String       @default("{}")
   automationLevel   String       @default("auto-suggest")
   preferences       String       @default("{}")
@@ -138,12 +139,28 @@ model Collection {
   description     String?
   color           String?
   icon            String?
+  path            String?          // Full path like "/prompts/development/backend"
+  parentId        String?          // Self-referencing for hierarchy
+  parent          Collection?      @relation("CollectionHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children        Collection[]     @relation("CollectionHierarchy")
+  level           Int              @default(0) // Depth level for easier querying
+  isFolder        Boolean          @default(true) // Distinguish between folders and collections
+  sortOrder       Int              @default(0) // Custom sorting within parent
+  isTemplate      Boolean          @default(false) // Mark as template folder
+  autoOrganize    Boolean          @default(false) // Enable auto-organization
+  organizationRules String         @default("{}") // JSON rules for auto-organization
+  permissions     String           @default("{}") // JSON permissions for sharing
+  analytics       String           @default("{}") // JSON analytics data
   items           ItemCollection[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  @@unique([userId, name])
+  @@unique([userId, path])
+  @@unique([userId, parentId, name])
   @@index([userId])
+  @@index([parentId])
+  @@index([path])
+  @@index([level])
 }
 
 model ItemCollection {
@@ -240,7 +257,7 @@ model AuditLog {
 
 model WorkflowQueue {
   id              String   @id @default(cuid())
-  type            String   // classification, optimization, conversion, deduplication
+  type            String   // classification, optimization, conversion, deduplication, folder_suggestion
   status          String   // pending, processing, completed, failed
   priority        Int      @default(0)
   payload         String
@@ -255,4 +272,37 @@ model WorkflowQueue {
 
   @@index([status, priority])
   @@index([type])
+}
+
+model FolderSuggestion {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  suggestedPath   String   // AI-suggested folder path
+  rationale       String?  // Why this folder structure was suggested
+  confidence      Float    @default(0.0) // AI confidence score
+  itemIds         String   // JSON array of item IDs that would fit this folder
+  status          String   @default("pending") // pending, accepted, rejected, applied
+  appliedAt       DateTime?
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model FolderTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  structure       String   // JSON representation of folder structure
+  rules           String   @default("{}") // JSON rules for auto-assignment
+  category        String?  // prompts, agents, rules, etc.
+  isPublic        Boolean  @default(false)
+  usageCount      Int      @default(0)
+  createdBy       String?
+  createdAt       DateTime @default(now())
+
+  @@index([category])
+  @@index([isPublic])
 }

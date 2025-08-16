@@ -6,7 +6,7 @@ import { LLMService } from '@/lib/llm';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -21,7 +21,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const itemId = params.id;
+    const resolvedParams = await params;
+    const itemId = resolvedParams.id;
 
     // Find the item
     const item = await prisma.item.findFirst({
@@ -37,6 +38,18 @@ export async function POST(
 
     const llmService = new LLMService(user.id);
     const optimizations = [];
+
+    // Check if any API keys are configured
+    const apiKeys = await prisma.apiKey.findMany({
+      where: { userId: user.id },
+    });
+
+    if (apiKeys.length === 0) {
+      return NextResponse.json(
+        { error: 'No LLM API keys configured. Please add API keys in Settings.' },
+        { status: 400 }
+      );
+    }
 
     // Generate optimizations for different models
     const targetModels = ['openai', 'anthropic', 'gemini'] as const;

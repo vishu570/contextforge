@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { EnhancedReviewItem } from '@/components/enhanced-review-item';
+import { BulkActionsToolbar } from '@/components/bulk-actions-toolbar';
+import { useToast } from '@/hooks/use-toast';
 import { 
   CheckCircle, 
   XCircle, 
@@ -46,6 +51,12 @@ interface StagedItem {
     suggestions: string[];
     confidence: number;
   }>;
+  duplicates?: Array<{
+    id: string;
+    name: string;
+    similarity: number;
+  }>;
+  suggestedPath?: string;
   status: 'pending' | 'approved' | 'rejected';
 }
 
@@ -58,22 +69,83 @@ const typeIcons = {
   other: FileText,
 };
 
-export default function ImportReviewPage() {
+function ImportReviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const importId = searchParams.get('importId');
+  const { toast } = useToast();
   
   const [stagedItems, setStagedItems] = useState<StagedItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<StagedItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
+  
+  // Bulk selection state
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      const pendingItemIds = stagedItems
+        .filter(item => item.status === 'pending')
+        .map(item => item.id);
+      setSelectedItemIds(new Set(pendingItemIds));
+    } else {
+      setSelectedItemIds(new Set());
+    }
+  };
 
   useEffect(() => {
     if (importId) {
       fetchStagedItems(importId);
     }
   }, [importId]);
+
+  // Keyboard shortcuts for bulk operations
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when not in an input/textarea
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      // Ctrl/Cmd + A: Select all pending items
+      if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+        event.preventDefault();
+        handleSelectAll(true);
+      }
+
+      // Escape: Clear selection
+      if (event.key === 'Escape') {
+        setSelectedItemIds(new Set());
+      }
+
+      // Ctrl/Cmd + Shift + A: Approve selected items
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'A') {
+        event.preventDefault();
+        if (selectedItemIds.size > 0) {
+          handleBulkAction('approve');
+        }
+      }
+
+      // Ctrl/Cmd + Shift + R: Reject selected items
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'R') {
+        event.preventDefault();
+        if (selectedItemIds.size > 0) {
+          handleBulkAction('reject');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItemIds, handleSelectAll]);
 
   const fetchStagedItems = async (importId: string) => {
     try {
@@ -164,11 +236,201 @@ export default function ImportReviewPage() {
       if (selectedItem?.id === itemId) {
         setSelectedItem({ ...selectedItem, optimizations: data.optimizations });
       }
+      
+      toast({
+        title: "Optimizations Generated",
+        description: `Generated ${data.optimizations.length} optimizations`,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate optimizations');
+      const message = err instanceof Error ? err.message : 'Failed to generate optimizations';
+      setError(message);
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const loadDuplicates = async (itemId: string) => {
+    try {
+      const response = await fetch(`/api/import/staged/${itemId}/duplicates`);
+      if (!response.ok) throw new Error('Failed to load duplicates');
+      
+      const data = await response.json();
+      
+      // Update local state with duplicates
+      setStagedItems(items => 
+        items.map(item => 
+          item.id === itemId 
+            ? { ...item, duplicates: data.duplicates }
+            : item
+        )
+      );
+      
+      if (selectedItem?.id === itemId) {
+        setSelectedItem({ ...selectedItem, duplicates: data.duplicates });
+      }
+    } catch (err) {
+      console.error('Failed to load duplicates:', err);
+    }
+  };
+
+  const runClassification = async (itemId: string, content: string, name: string, type: string) => {
+    try {
+      const response = await fetch(`/api/import/staged/${itemId}/classify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, name, type }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to run classification');
+      
+      const data = await response.json();
+      
+      // Update local state with classification
+      setStagedItems(items => 
+        items.map(item => 
+          item.id === itemId 
+            ? { 
+                ...item, 
+                classification: data.classification,
+                suggestedPath: data.suggestedPath,
+                metadata: { ...item.metadata, ...data.extractedMetadata }
+              }
+            : item
+        )
+      );
+      
+      if (selectedItem?.id === itemId) {
+        setSelectedItem({ 
+          ...selectedItem, 
+          classification: data.classification,
+          suggestedPath: data.suggestedPath,
+          metadata: { ...selectedItem.metadata, ...data.extractedMetadata }
+        });
+      }
+      
+      toast({
+        title: "Classification Complete",
+        description: `Classified as ${data.classification.type} with ${Math.round(data.classification.confidence * 100)}% confidence`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to run classification';
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateItemData = (itemId: string, updates: Partial<StagedItem>) => {
+    setStagedItems(items => 
+      items.map(item => 
+        item.id === itemId 
+          ? { ...item, ...updates }
+          : item
+      )
+    );
+    
+    if (selectedItem?.id === itemId) {
+      setSelectedItem({ ...selectedItem, ...updates });
+    }
+  };
+
+  // Bulk selection handlers
+  const handleSelectItem = (itemId: string, checked: boolean) => {
+    setSelectedItemIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(itemId);
+      } else {
+        newSet.delete(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkAction = async (action: 'approve' | 'reject', itemIds?: string[]) => {
+    const targetItemIds = itemIds || Array.from(selectedItemIds);
+    if (targetItemIds.length === 0) return;
+    
+    setIsBulkProcessing(true);
+    setBulkProgress({ current: 0, total: targetItemIds.length });
+    
+    try {
+      const response = await fetch('/api/import/staged/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          itemIds: targetItemIds,
+          action,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to ${action} items`);
+      }
+      
+      const result = await response.json();
+      
+      // Update local state for all successfully processed items
+      setStagedItems(items => 
+        items.map(item => 
+          targetItemIds.includes(item.id)
+            ? { ...item, status: action === 'approve' ? 'approved' : 'rejected' }
+            : item
+        )
+      );
+      
+      // Clear selection
+      setSelectedItemIds(new Set());
+      
+      // Move to next pending item if current item was processed
+      if (selectedItem && targetItemIds.includes(selectedItem.id)) {
+        const nextPendingItem = stagedItems.find(item => 
+          !targetItemIds.includes(item.id) && item.status === 'pending'
+        );
+        setSelectedItem(nextPendingItem || null);
+      }
+      
+      // Show success message with details
+      if (result.failureCount > 0) {
+        toast({
+          title: "Bulk Action Partially Complete",
+          description: `Successfully ${action}d ${result.successCount} of ${result.totalItems} items. ${result.failureCount} failed.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Bulk Action Complete",
+          description: `Successfully ${action}d ${result.successCount} items`,
+        });
+      }
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to ${action} items`);
+      toast({
+        title: "Error",
+        description: `Failed to complete bulk ${action} operation`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkProcessing(false);
+      setBulkProgress({ current: 0, total: 0 });
+    }
+  };
+
+  const handleApproveAll = () => {
+    const pendingItemIds = stagedItems
+      .filter(item => item.status === 'pending')
+      .map(item => item.id);
+    handleBulkAction('approve', pendingItemIds);
   };
 
   if (isLoading) {
@@ -212,25 +474,41 @@ export default function ImportReviewPage() {
               Review and approve imported items before adding them to your library
             </p>
           </div>
-          <div className="flex space-x-2">
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/dashboard/import')}
-            >
-              Back to Import
-            </Button>
-            <Button 
-              onClick={handleFinalize}
-              disabled={pendingCount > 0 || isProcessing}
-            >
-              Finalize ({approvedCount} items)
-            </Button>
+          <div className="flex items-center space-x-4">
+            <div className="text-xs text-muted-foreground hidden lg:block">
+              <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Ctrl+A</kbd> Select all •{' '}
+              <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Ctrl+Shift+A</kbd> Approve •{' '}
+              <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">Esc</kbd> Clear
+            </div>
+            <div className="flex space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => router.push('/dashboard/import')}
+              >
+                Back to Import
+              </Button>
+              <Button 
+                onClick={handleFinalize}
+                disabled={pendingCount > 0 || isProcessing}
+              >
+                Finalize ({approvedCount} items)
+              </Button>
+            </div>
           </div>
         </div>
 
         {error && (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {isBulkProcessing && (
+          <Alert>
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <AlertDescription>
+              Processing bulk operation... This may take a few moments.
+            </AlertDescription>
           </Alert>
         )}
 
@@ -262,217 +540,134 @@ export default function ImportReviewPage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Items List */}
-          <Card className="lg:col-span-1">
+        {/* Bulk Actions Toolbar */}
+        <BulkActionsToolbar
+          selectedCount={selectedItemIds.size}
+          totalPendingCount={pendingCount}
+          isProcessing={isBulkProcessing}
+          progress={bulkProgress}
+          onSelectAll={handleSelectAll}
+          onClearSelection={() => setSelectedItemIds(new Set())}
+          onBulkApprove={() => handleBulkAction('approve')}
+          onBulkReject={() => handleBulkAction('reject')}
+          onApproveAll={handleApproveAll}
+          allSelected={pendingCount > 0 && selectedItemIds.size === pendingCount}
+        />
+
+        {/* Enhanced Review Interface */}
+        <div className="space-y-6">
+          {/* Items Navigation */}
+          <Card>
             <CardHeader>
-              <CardTitle>Items to Review</CardTitle>
+              <CardTitle>Items to Review ({stagedItems.findIndex(item => item.id === selectedItem?.id) + 1} of {stagedItems.length})</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[600px]">
-                {stagedItems.map((item) => {
-                  const Icon = typeIcons[item.type];
-                  const isSelected = selectedItem?.id === item.id;
-                  
-                  return (
-                    <div
-                      key={item.id}
-                      className={`p-4 border-b cursor-pointer hover:bg-accent/50 transition-colors ${
-                        isSelected ? 'bg-accent' : ''
-                      }`}
-                      onClick={() => setSelectedItem(item)}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <Icon className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium text-sm truncate">
-                            {item.name}
-                          </span>
-                        </div>
-                        {item.status === 'pending' && <Clock className="h-4 w-4 text-orange-500" />}
-                        {item.status === 'approved' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                        {item.status === 'rejected' && <XCircle className="h-4 w-4 text-red-500" />}
+            <CardContent>
+              <div className="space-y-4">
+                {/* Grid layout for items with checkboxes */}
+                <div className="grid gap-2">
+                  {stagedItems.map((item, index) => {
+                    const Icon = typeIcons[item.type];
+                    const isSelected = selectedItem?.id === item.id;
+                    const isChecked = selectedItemIds.has(item.id);
+                    const isPending = item.status === 'pending';
+                    
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex items-center space-x-3 p-2 rounded-lg border ${
+                          isSelected 
+                            ? 'bg-accent border-accent-foreground/20' 
+                            : 'hover:bg-accent/50'
+                        } ${
+                          isChecked && isPending
+                            ? 'ring-2 ring-primary/20 bg-primary/5'
+                            : ''
+                        }`}
+                      >
+                        {/* Checkbox for pending items */}
+                        {isPending && (
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={(checked) => 
+                              handleSelectItem(item.id, checked as boolean)
+                            }
+                            disabled={isBulkProcessing}
+                          />
+                        )}
+                        
+                        {/* Item button - takes up remaining space */}
+                        <Button
+                          variant={isSelected ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => {
+                            setSelectedItem(item);
+                            // Load duplicates when item is selected
+                            loadDuplicates(item.id);
+                          }}
+                          className="flex-1 justify-start h-auto p-2"
+                          disabled={isBulkProcessing}
+                        >
+                          <Icon className="h-4 w-4 mr-2" />
+                          <span className="flex-1 text-left truncate">{item.name}</span>
+                          <div className="flex items-center space-x-1 ml-2">
+                            {item.status === 'pending' && <Clock className="h-3 w-3 text-orange-500" />}
+                            {item.status === 'approved' && <CheckCircle className="h-3 w-3 text-green-500" />}
+                            {item.status === 'rejected' && <XCircle className="h-3 w-3 text-red-500" />}
+                          </div>
+                        </Button>
                       </div>
-                      <div className="flex items-center space-x-1 mb-1">
-                        <Badge variant="outline" className="text-xs">
-                          {item.type}
-                        </Badge>
-                        <Badge variant="secondary" className="text-xs">
-                          {item.format}
-                        </Badge>
-                      </div>
-                      {item.classification && (
-                        <div className="text-xs text-muted-foreground">
-                          AI: {item.classification.type} ({Math.round(item.classification.confidence * 100)}%)
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </ScrollArea>
+                    );
+                  })}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Item Details */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center space-x-2">
-                  {selectedItem && (
-                    <>
-                      {(() => {
-                        const Icon = typeIcons[selectedItem.type];
-                        return <Icon className="h-5 w-5" />;
-                      })()}
-                      <span>{selectedItem.name}</span>
-                    </>
-                  )}
-                </CardTitle>
-                {selectedItem?.status === 'pending' && (
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => generateOptimizations(selectedItem.id)}
-                      disabled={isProcessing}
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Optimize
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleItemAction(selectedItem.id, 'reject')}
-                      disabled={isProcessing}
-                    >
-                      <ThumbsDown className="mr-2 h-4 w-4" />
-                      Reject
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleItemAction(selectedItem.id, 'approve')}
-                      disabled={isProcessing}
-                    >
-                      <ThumbsUp className="mr-2 h-4 w-4" />
-                      Approve
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {selectedItem ? (
-                <Tabs defaultValue="content" className="w-full">
-                  <TabsList>
-                    <TabsTrigger value="content">
-                      <Eye className="mr-2 h-4 w-4" />
-                      Content
-                    </TabsTrigger>
-                    <TabsTrigger value="classification">
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      AI Analysis
-                    </TabsTrigger>
-                    {selectedItem.optimizations && (
-                      <TabsTrigger value="optimizations">
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        Optimizations
-                      </TabsTrigger>
-                    )}
-                  </TabsList>
-                  
-                  <TabsContent value="content" className="space-y-4">
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      <Badge variant="outline">{selectedItem.type}</Badge>
-                      <Badge variant="secondary">{selectedItem.format}</Badge>
-                      {selectedItem.language && (
-                        <Badge variant="secondary">{selectedItem.language}</Badge>
-                      )}
-                      {selectedItem.targetModels && (
-                        <Badge variant="secondary">{selectedItem.targetModels}</Badge>
-                      )}
-                    </div>
-                    <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-                      <pre className="whitespace-pre-wrap text-sm">
-                        {selectedItem.content}
-                      </pre>
-                    </ScrollArea>
-                  </TabsContent>
-                  
-                  <TabsContent value="classification" className="space-y-4">
-                    {selectedItem.classification ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">Detected Type:</span>
-                          <Badge variant="outline">{selectedItem.classification.type}</Badge>
-                          <span className="text-sm text-muted-foreground">
-                            ({Math.round(selectedItem.classification.confidence * 100)}% confidence)
-                          </span>
-                        </div>
-                        {selectedItem.classification.reasoning && (
-                          <div>
-                            <span className="font-medium">Reasoning:</span>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {selectedItem.classification.reasoning}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Sparkles className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">No AI analysis available</p>
-                      </div>
-                    )}
-                  </TabsContent>
-                  
-                  {selectedItem.optimizations && (
-                    <TabsContent value="optimizations" className="space-y-4">
-                      {selectedItem.optimizations.map((opt, index) => (
-                        <Card key={index}>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-sm flex items-center justify-between">
-                              <span>Optimized for {opt.targetModel}</span>
-                              <Badge variant="outline">
-                                {Math.round(opt.confidence * 100)}% confidence
-                              </Badge>
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="space-y-3">
-                              <div>
-                                <h5 className="font-medium text-sm mb-2">Suggestions:</h5>
-                                <ul className="text-sm text-muted-foreground space-y-1">
-                                  {opt.suggestions.map((suggestion, i) => (
-                                    <li key={i}>• {suggestion}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <Separator />
-                              <div>
-                                <h5 className="font-medium text-sm mb-2">Optimized Content:</h5>
-                                <ScrollArea className="h-32 w-full rounded border p-2">
-                                  <pre className="text-xs whitespace-pre-wrap">
-                                    {opt.optimizedContent}
-                                  </pre>
-                                </ScrollArea>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </TabsContent>
-                  )}
-                </Tabs>
-              ) : (
-                <div className="text-center py-12">
-                  <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">Select an item to review</p>
+          {/* Enhanced Review Item */}
+          {selectedItem ? (
+            <div className={`${
+              selectedItemIds.has(selectedItem.id) && selectedItem.status === 'pending'
+                ? 'ring-2 ring-primary/20 rounded-lg'
+                : ''
+            }`}>
+              <EnhancedReviewItem
+                item={selectedItem}
+                onUpdate={(updates) => updateItemData(selectedItem.id, updates)}
+                onApprove={() => handleItemAction(selectedItem.id, 'approve')}
+                onReject={() => handleItemAction(selectedItem.id, 'reject')}
+                onOptimize={() => generateOptimizations(selectedItem.id)}
+                isProcessing={isProcessing || isBulkProcessing}
+              />
+              {selectedItemIds.has(selectedItem.id) && selectedItem.status === 'pending' && (
+                <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded text-sm text-primary">
+                  This item is selected for bulk operations
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-12">
+                <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Select an item to review</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function ImportReviewPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <RefreshCw className="h-8 w-8 animate-spin" />
+        </div>
+      </DashboardLayout>
+    }>
+      <ImportReviewContent />
+    </Suspense>
   );
 }

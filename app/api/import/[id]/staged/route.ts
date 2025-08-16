@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -20,7 +20,8 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const importId = params.id;
+    const resolvedParams = await params;
+    const importId = resolvedParams.id;
 
     // Get the import record
     const importRecord = await prisma.import.findFirst({

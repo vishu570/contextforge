@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; action: string } }
+  { params }: { params: Promise<{ id: string; action: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -20,8 +20,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const itemId = params.id;
-    const action = params.action;
+    const resolvedParams = await params;
+    const itemId = resolvedParams.id;
+    const action = resolvedParams.action;
 
     if (!['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -97,9 +98,10 @@ export async function POST(
       itemId,
     });
   } catch (error) {
-    console.error(`Error ${params.action}ing item:`, error);
+    const resolvedParams = await params;
+    console.error(`Error ${resolvedParams.action}ing item:`, error);
     return NextResponse.json(
-      { error: `Failed to ${params.action} item` },
+      { error: `Failed to ${resolvedParams.action} item` },
       { status: 500 }
     );
   }
