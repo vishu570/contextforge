@@ -612,7 +612,6 @@ export function AdvancedPromptEditor({
                       <Label htmlFor="content">Prompt Content</Label>
                       <div className="mt-2 border rounded-md overflow-hidden">
                         <MonacoEditor
-                          ref={editorRef}
                           height="500px"
                           language="markdown"
                           value={watch('content')}

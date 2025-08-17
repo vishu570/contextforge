@@ -17,7 +17,7 @@ const moveItemsSchema = z.object({
 // POST /api/folders/[id]/items - Add items to folder
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -30,13 +30,16 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const folderId = resolvedParams.id;
+
     const body = await request.json();
     const data = addItemsSchema.parse(body);
 
     // Check if folder exists and belongs to user
     const folder = await prisma.collection.findUnique({
       where: { 
-        id: params.id,
+        id: folderId,
         userId: user.id 
       }
     });
@@ -59,7 +62,7 @@ export async function POST(
 
     // Get current max position in folder
     const maxPosition = await prisma.itemCollection.findFirst({
-      where: { collectionId: params.id },
+      where: { collectionId: folderId },
       orderBy: { position: 'desc' },
       select: { position: true }
     });
@@ -69,20 +72,19 @@ export async function POST(
     // Create item-collection relationships
     const itemCollections = data.itemIds.map((itemId, index) => ({
       itemId,
-      collectionId: params.id,
+      collectionId: folderId,
       position: startPosition + index
     }));
 
     await prisma.itemCollection.createMany({
-      data: itemCollections,
-      skipDuplicates: true
+      data: itemCollections
     });
 
     return NextResponse.json({ success: true, addedItems: data.itemIds.length });
   } catch (error) {
     console.error('Error adding items to folder:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to add items to folder' }, { status: 500 });
   }
@@ -91,7 +93,7 @@ export async function POST(
 // PATCH /api/folders/[id]/items - Move items between folders or reorder within folder
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -104,6 +106,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const folderId = resolvedParams.id;
+
     const body = await request.json();
     const { action } = body;
 
@@ -113,7 +118,7 @@ export async function PATCH(
       // Verify source folder belongs to user
       const sourceFolder = await prisma.collection.findUnique({
         where: { 
-          id: params.id,
+          id: folderId,
           userId: user.id 
         }
       });
@@ -137,7 +142,7 @@ export async function PATCH(
       // Move items to target folder
       await prisma.itemCollection.updateMany({
         where: {
-          collectionId: params.id,
+          collectionId: folderId,
           itemId: { in: data.itemIds }
         },
         data: {
@@ -154,7 +159,7 @@ export async function PATCH(
       for (const { itemId, position } of itemPositions) {
         await prisma.itemCollection.updateMany({
           where: {
-            collectionId: params.id,
+            collectionId: folderId,
             itemId: itemId
           },
           data: { position }
@@ -168,7 +173,7 @@ export async function PATCH(
   } catch (error) {
     console.error('Error updating folder items:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to update folder items' }, { status: 500 });
   }
@@ -177,7 +182,7 @@ export async function PATCH(
 // DELETE /api/folders/[id]/items - Remove items from folder
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -190,6 +195,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const folderId = resolvedParams.id;
+
     const { searchParams } = new URL(request.url);
     const itemIds = searchParams.get('itemIds')?.split(',') || [];
 
@@ -200,7 +208,7 @@ export async function DELETE(
     // Check if folder exists and belongs to user
     const folder = await prisma.collection.findUnique({
       where: { 
-        id: params.id,
+        id: folderId,
         userId: user.id 
       }
     });
@@ -212,7 +220,7 @@ export async function DELETE(
     // Remove items from folder
     const deleted = await prisma.itemCollection.deleteMany({
       where: {
-        collectionId: params.id,
+        collectionId: folderId,
         itemId: { in: itemIds }
       }
     });

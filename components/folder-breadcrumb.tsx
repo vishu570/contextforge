@@ -164,14 +164,14 @@ export function useFolderBreadcrumb(
   if (!currentFolder) return [];
 
   const segments: BreadcrumbSegment[] = [];
-  let current = currentFolder;
+  let current: BreadcrumbSegment | null = currentFolder;
 
   // Build path from current folder to root
   while (current) {
     segments.unshift(current);
     
     // Find parent folder
-    const parentPath = current.path.split('/').slice(0, -1).join('/') || '/';
+    const parentPath: string = current.path.split('/').slice(0, -1).join('/') || '/';
     current = allFolders.find(f => f.path === parentPath) || null;
   }
 

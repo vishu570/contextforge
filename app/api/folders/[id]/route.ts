@@ -11,13 +11,13 @@ const updateFolderSchema = z.object({
   icon: z.string().optional(),
   sortOrder: z.number().optional(),
   autoOrganize: z.boolean().optional(),
-  organizationRules: z.record(z.any()).optional(),
+  organizationRules: z.record(z.string(), z.any()).optional(),
 });
 
 // GET /api/folders/[id] - Get a specific folder
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -30,27 +30,15 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const folderId = resolvedParams.id;
+
     const folder = await prisma.collection.findUnique({
       where: { 
-        id: params.id,
+        id: folderId,
         userId: user.id 
       },
       include: {
-        children: {
-          include: {
-            _count: {
-              select: {
-                children: true,
-                items: true
-              }
-            }
-          },
-          orderBy: [
-            { sortOrder: 'asc' },
-            { name: 'asc' }
-          ]
-        },
-        parent: true,
         items: {
           include: {
             item: {
@@ -72,7 +60,6 @@ export async function GET(
         },
         _count: {
           select: {
-            children: true,
             items: true
           }
         }
@@ -93,7 +80,7 @@ export async function GET(
 // PATCH /api/folders/[id] - Update a folder
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -106,13 +93,16 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const folderId = resolvedParams.id;
+
     const body = await request.json();
     const data = updateFolderSchema.parse(body);
 
     // Check if folder exists and belongs to user
     const existingFolder = await prisma.collection.findUnique({
       where: { 
-        id: params.id,
+        id: folderId,
         userId: user.id 
       }
     });
@@ -131,7 +121,7 @@ export async function PATCH(
 
       // Check for cycles if changing parent
       if (newParentId && newParentId !== existingFolder.parentId) {
-        const wouldCreateCycle = await checkForCycle(newParentId, params.id);
+        const wouldCreateCycle = await checkForCycle(newParentId, folderId);
         if (wouldCreateCycle) {
           return NextResponse.json({ 
             error: 'Cannot move folder: would create a cycle' 
@@ -163,7 +153,7 @@ export async function PATCH(
             userId: user.id,
             parentId: newParentId || null,
             name: newName,
-            NOT: { id: params.id }
+            NOT: { id: folderId }
           }
         });
 
@@ -186,12 +176,11 @@ export async function PATCH(
     }
 
     const folder = await prisma.collection.update({
-      where: { id: params.id },
+      where: { id: folderId },
       data: updateData,
       include: {
         _count: {
           select: {
-            children: true,
             items: true
           }
         }
@@ -199,15 +188,15 @@ export async function PATCH(
     });
 
     // Update all descendant paths if path changed
-    if (path !== existingFolder.path) {
-      await updateDescendantPaths(params.id, path, level);
+    if (path && path !== existingFolder.path) {
+      await updateDescendantPaths(folderId, path, level);
     }
 
     return NextResponse.json({ folder });
   } catch (error) {
     console.error('Error updating folder:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to update folder' }, { status: 500 });
   }
@@ -216,7 +205,7 @@ export async function PATCH(
 // DELETE /api/folders/[id] - Delete a folder
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -229,13 +218,16 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const resolvedParams = await params;
+    const folderId = resolvedParams.id;
+
     const { searchParams } = new URL(request.url);
     const force = searchParams.get('force') === 'true';
 
     // Check if folder exists and belongs to user
     const folder = await prisma.collection.findUnique({
       where: { 
-        id: params.id,
+        id: folderId,
         userId: user.id 
       },
       include: {
@@ -259,7 +251,7 @@ export async function DELETE(
 
     // Delete the folder (cascade will handle children and items)
     await prisma.collection.delete({
-      where: { id: params.id }
+      where: { id: folderId }
     });
 
     return NextResponse.json({ success: true });
@@ -271,14 +263,14 @@ export async function DELETE(
 
 // Helper function to check for cycles in folder hierarchy
 async function checkForCycle(parentId: string, childId: string): Promise<boolean> {
-  let currentId = parentId;
+  let currentId: string | null = parentId;
   
   while (currentId) {
     if (currentId === childId) {
       return true; // Cycle detected
     }
     
-    const parent = await prisma.collection.findUnique({
+    const parent: { parentId: string | null } | null = await prisma.collection.findUnique({
       where: { id: currentId },
       select: { parentId: true }
     });
@@ -300,6 +292,7 @@ async function updateDescendantPaths(folderId: string, newPath: string, newLevel
   });
 
   for (const descendant of descendants) {
+    if (!descendant.path) continue;
     const relativePath = descendant.path.substring(newPath.length);
     const newDescendantPath = newPath + relativePath;
     const newDescendantLevel = newLevel + relativePath.split('/').length - 1;

@@ -111,8 +111,19 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Filter out null paths and convert to the expected type
+    const validFolders = existingFolders
+      .filter(f => f.path !== null)
+      .map(f => ({
+        id: f.id,
+        name: f.name,
+        path: f.path as string,
+        level: f.level,
+        description: f.description
+      }));
+
     // Generate suggestions using AI
-    const suggestions = await generateFolderSuggestions(items, existingFolders, analysisType);
+    const suggestions = await generateFolderSuggestions(items, validFolders, analysisType);
 
     // Save suggestions to database
     const savedSuggestions = await Promise.all(

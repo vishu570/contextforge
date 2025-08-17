@@ -11,7 +11,7 @@ const createFolderSchema = z.object({
   icon: z.string().optional(),
   isTemplate: z.boolean().default(false),
   autoOrganize: z.boolean().default(false),
-  organizationRules: z.record(z.any()).default({}),
+  organizationRules: z.record(z.string(), z.any()).default({}),
 });
 
 // GET /api/folders - Get user's folder hierarchy
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating folder:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to create folder' }, { status: 500 });
   }

@@ -1,5 +1,5 @@
-import { ChatOpenAI } from 'openai';
-import { ChatAnthropic } from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 interface Item {
   id: string;
@@ -144,7 +144,7 @@ async function generateSemanticSuggestions(
 
       const semanticGroups = await analyzeSemanticGroups(typeItems, type);
       
-      semanticGroups.forEach(group => {
+      semanticGroups.forEach((group: any) => {
         const basePath = `/${type.toLowerCase()}`;
         const suggestedPath = generatePathFromGroup(group, basePath, existingFolders);
         
@@ -153,7 +153,7 @@ async function generateSemanticSuggestions(
             path: suggestedPath,
             rationale: group.rationale,
             confidence: group.confidence,
-            itemIds: group.items.map(item => item.id),
+            itemIds: group.items.map((item: any) => item.id),
             suggestedName: suggestedPath.split('/').pop(),
             description: group.description
           });
@@ -240,9 +240,8 @@ async function callLLM(prompt: string): Promise<string> {
   try {
     // Check if OpenAI is available
     if (process.env.OPENAI_API_KEY) {
-      const openai = new ChatOpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-        model: 'gpt-3.5-turbo'
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
       });
       
       const response = await openai.chat.completions.create({
@@ -257,14 +256,13 @@ async function callLLM(prompt: string): Promise<string> {
     
     // Check if Anthropic is available
     if (process.env.ANTHROPIC_API_KEY) {
-      const anthropic = new ChatAnthropic({
+      const anthropic = new Anthropic({
         apiKey: process.env.ANTHROPIC_API_KEY
       });
       
       const response = await anthropic.messages.create({
         model: 'claude-3-haiku-20240307',
         max_tokens: 2000,
-        temperature: 0.3,
         messages: [{ role: 'user', content: prompt }]
       });
       

@@ -6,8 +6,8 @@ import { z } from 'zod';
 const createTemplateSchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().optional(),
-  structure: z.record(z.any()),
-  rules: z.record(z.any()).default({}),
+  structure: z.record(z.string(), z.any()),
+  rules: z.record(z.string(), z.any()).default({}),
   category: z.string().optional(),
   isPublic: z.boolean().default(false),
 });
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating folder template:', error);
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid input', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid input', details: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
   }

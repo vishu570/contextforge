@@ -20,7 +20,7 @@ import {
   TestTube,
   Play,
   Pause,
-  Stop,
+  Square,
   BarChart3,
   TrendingUp,
   TrendingDown,
@@ -561,7 +561,7 @@ export function PromptABTesting({
                         size="sm"
                         onClick={() => stopTest(test.id)}
                       >
-                        <Stop className="h-4 w-4" />
+                        <Square className="h-4 w-4" />
                       </Button>
                     </>
                   )}

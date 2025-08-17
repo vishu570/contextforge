@@ -232,7 +232,7 @@ export function FolderManagementInterface({
                 onFolderUpdate={updateFolder}
                 onFolderDelete={deleteFolder}
                 onItemMove={moveItems}
-                selectedFolderId={selectedFolderId}
+                selectedFolderId={selectedFolderId || undefined}
                 showItems={false}
                 allowDragDrop={true}
                 allowEdit={true}

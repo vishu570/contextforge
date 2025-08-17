@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Template, Sparkles, Download, Plus, Settings, Copy, Trash2, Edit } from 'lucide-react';
+import { FileText, Sparkles, Download, Plus, Settings, Copy, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -552,7 +552,7 @@ function TemplateCard({
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <CardTitle className="text-lg flex items-center">
-              <Template className="h-5 w-5 mr-2" />
+              <FileText className="h-5 w-5 mr-2" />
               {template.name}
             </CardTitle>
             <CardDescription className="mt-1">
