@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # ContextForge Application
+  contextforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: contextforge-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/prod.db
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+    volumes:
+      - contextforge_data:/app/data
+      - contextforge_uploads:/app/uploads
+    depends_on:
+      - redis
+      - postgres
+    restart: unless-stopped
+    networks:
+      - contextforge-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis for caching and job queues
+  redis:
+    image: redis:7-alpine
+    container_name: contextforge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    networks:
+      - contextforge-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # PostgreSQL for production database (optional - can use SQLite)
+  postgres:
+    image: postgres:15-alpine
+    container_name: contextforge-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=contextforge
+      - POSTGRES_USER=contextforge
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-contextforge123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - contextforge-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contextforge -d contextforge"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Vector database for embeddings (optional)
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: contextforge-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - contextforge-network
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: contextforge-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - contextforge
+    restart: unless-stopped
+    networks:
+      - contextforge-network
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: contextforge-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - contextforge-network
+
+  # Grafana for dashboards (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: contextforge-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./docker/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - contextforge-network
+
+volumes:
+  contextforge_data:
+    driver: local
+  contextforge_uploads:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+  qdrant_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  contextforge-network:
+    driver: bridge

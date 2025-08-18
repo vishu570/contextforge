@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Settings, Key, User, Palette, Shield } from 'lucide-react';
 import { ThemeSettings } from '@/components/theme-settings';
+import { ApiKeyManagement } from '@/components/api-key-management';
 
 async function getUserSettings(userId: string) {
   const [user, apiKeys] = await Promise.all([
@@ -109,107 +110,11 @@ export default async function SettingsPage() {
               <CardHeader>
                 <CardTitle>API Keys</CardTitle>
                 <CardDescription>
-                  Manage your API keys for OpenAI, Anthropic, and Gemini
+                  Manage your API keys for OpenAI, Anthropic, Gemini, and GitHub
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* OpenAI */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">OpenAI API Key</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Used for GPT models and embeddings
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      {apiKeys.some(key => key.provider === 'openai') ? 'Update' : 'Add'}
-                    </Button>
-                  </div>
-                  {apiKeys.some(key => key.provider === 'openai') && (
-                    <div className="text-xs text-muted-foreground">
-                      Last used: {apiKeys.find(key => key.provider === 'openai')?.lastUsedAt ? 
-                        new Date(apiKeys.find(key => key.provider === 'openai')!.lastUsedAt!).toLocaleDateString() :
-                        'Never'
-                      }
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Anthropic */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Anthropic API Key</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Used for Claude models
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      {apiKeys.some(key => key.provider === 'anthropic') ? 'Update' : 'Add'}
-                    </Button>
-                  </div>
-                  {apiKeys.some(key => key.provider === 'anthropic') && (
-                    <div className="text-xs text-muted-foreground">
-                      Last used: {apiKeys.find(key => key.provider === 'anthropic')?.lastUsedAt ? 
-                        new Date(apiKeys.find(key => key.provider === 'anthropic')!.lastUsedAt!).toLocaleDateString() :
-                        'Never'
-                      }
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* Gemini */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">Google Generative AI Key</h4>
-                      <p className="text-xs text-muted-foreground">
-                        Used for Gemini models
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      {apiKeys.some(key => key.provider === 'gemini') ? 'Update' : 'Add'}
-                    </Button>
-                  </div>
-                  {apiKeys.some(key => key.provider === 'gemini') && (
-                    <div className="text-xs text-muted-foreground">
-                      Last used: {apiKeys.find(key => key.provider === 'gemini')?.lastUsedAt ? 
-                        new Date(apiKeys.find(key => key.provider === 'gemini')!.lastUsedAt!).toLocaleDateString() :
-                        'Never'
-                      }
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-
-                {/* GitHub */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-medium">GitHub Token (Optional)</h4>
-                      <p className="text-xs text-muted-foreground">
-                        For importing from private repositories
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm">
-                      {apiKeys.some(key => key.provider === 'github') ? 'Update' : 'Add'}
-                    </Button>
-                  </div>
-                  {apiKeys.some(key => key.provider === 'github') && (
-                    <div className="text-xs text-muted-foreground">
-                      Last used: {apiKeys.find(key => key.provider === 'github')?.lastUsedAt ? 
-                        new Date(apiKeys.find(key => key.provider === 'github')!.lastUsedAt!).toLocaleDateString() :
-                        'Never'
-                      }
-                    </div>
-                  )}
-                </div>
+              <CardContent>
+                <ApiKeyManagement initialApiKeys={apiKeys} />
               </CardContent>
             </Card>
           </TabsContent>

@@ -36,15 +36,20 @@ export class LLMService {
   private openai?: OpenAI;
   private anthropic?: Anthropic;
   private genAI?: GoogleGenerativeAI;
-  private userId: string;
+  private userId?: string;
 
-  constructor(userId: string) {
+  constructor(userId?: string) {
     this.userId = userId;
   }
 
-  private async initializeProviders() {
+  private async initializeProviders(userId?: string) {
+    const targetUserId = userId || this.userId;
+    if (!targetUserId) {
+      throw new Error('User ID required to initialize LLM providers');
+    }
+
     const apiKeys = await prisma.apiKey.findMany({
-      where: { userId: this.userId },
+      where: { userId: targetUserId },
     });
 
     for (const apiKey of apiKeys) {
@@ -71,10 +76,11 @@ export class LLMService {
       name?: string;
       currentType?: string;
       enhancedAnalysis?: boolean;
+      userId?: string;
     },
     config?: LLMConfig
   ): Promise<ClassificationResult> {
-    await this.initializeProviders();
+    await this.initializeProviders(options?.userId);
     
     const enhancedPrompt = options?.enhancedAnalysis ? `
 Analyze the following content and provide enhanced classification with detailed reasoning and metadata extraction.
@@ -450,5 +456,66 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
     if (this.anthropic) return 'anthropic';
     if (this.genAI) return 'gemini';
     throw new Error('No LLM provider configured');
+  }
+
+  async generateResponse(
+    prompt: string, 
+    options?: {
+      model?: string;
+      temperature?: number;
+      maxTokens?: number;
+      userId?: string;
+    }
+  ): Promise<string> {
+    await this.initializeProviders(options?.userId);
+    
+    const provider = this.getAvailableProvider();
+    
+    try {
+      let result: string;
+      
+      switch (provider) {
+        case 'openai':
+          if (!this.openai) throw new Error('OpenAI not configured');
+          const openaiResponse = await this.openai.chat.completions.create({
+            model: options?.model || 'gpt-4o-mini',
+            messages: [{ role: 'user', content: prompt }],
+            temperature: options?.temperature || 0.3,
+            max_tokens: options?.maxTokens || 1000,
+          });
+          result = openaiResponse.choices[0].message.content || '';
+          break;
+          
+        case 'anthropic':
+          if (!this.anthropic) throw new Error('Anthropic not configured');
+          const anthropicResponse = await this.anthropic.messages.create({
+            model: options?.model || 'claude-3-haiku-20240307',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: options?.maxTokens || 1000,
+            temperature: options?.temperature || 0.3,
+          });
+          result = anthropicResponse.content[0].type === 'text' 
+            ? anthropicResponse.content[0].text 
+            : '';
+          break;
+          
+        case 'gemini':
+          if (!this.genAI) throw new Error('Gemini not configured');
+          const model = this.genAI.getGenerativeModel({ 
+            model: options?.model || 'gemini-pro' 
+          });
+          const geminiResponse = await model.generateContent(prompt);
+          result = geminiResponse.response.text();
+          break;
+          
+        default:
+          throw new Error('No LLM provider available');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Generate response error:', error);
+      throw error;
+    }
   }
 }

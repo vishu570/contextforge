@@ -23,6 +23,11 @@ model User {
   imports           Import[]
   auditLogs         AuditLog[]
   folderSuggestions FolderSuggestion[]
+  // New intelligent context relationships
+  contextTemplates  ContextTemplate[]
+  contextGenerations ContextGeneration[]
+  semanticSearches  SemanticSearch[]
+  scheduledExports  ScheduledExport[]
   settings          String       @default("{}")
   automationLevel   String       @default("auto-suggest")
   preferences       String       @default("{}")
@@ -66,6 +71,13 @@ model Item {
   optimizations   Optimization[]
   conversions     Conversion[]
   auditLogs       AuditLog[]
+  // New intelligent context relationships
+  embedding       ItemEmbedding?
+  clusters        SemanticClusterItem[]
+  templateItems   ContextTemplateItem[]
+  generationItems ContextGenerationItem[]
+  modelOptimizations ModelOptimization[]
+  summary         ContentSummary?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -305,4 +317,231 @@ model FolderTemplate {
 
   @@index([category])
   @@index([isPublic])
+}
+
+// Embeddings and semantic analysis models
+model ItemEmbedding {
+  id              String   @id @default(cuid())
+  itemId          String   @unique
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  provider        String   // openai, sentence-transformers, etc.
+  model           String   // text-embedding-3-small, all-MiniLM-L6-v2, etc.
+  embedding       String   // JSON array of embedding values
+  dimensions      Int      // Number of dimensions in the embedding
+  tokenCount      Int?     // Number of tokens in the original content
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([itemId])
+  @@index([provider, model])
+}
+
+model SemanticCluster {
+  id              String             @id @default(cuid())
+  name            String
+  description     String?
+  centroid        String             // JSON array representing cluster center
+  algorithm       String             // kmeans, hierarchical, etc.
+  threshold       Float              // Similarity threshold for cluster membership
+  itemCount       Int                @default(0)
+  items           SemanticClusterItem[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([algorithm])
+  @@index([itemCount])
+}
+
+model SemanticClusterItem {
+  id              String          @id @default(cuid())
+  clusterId       String
+  cluster         SemanticCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  itemId          String
+  item            Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  similarity      Float           // Similarity to cluster centroid
+  createdAt       DateTime        @default(now())
+
+  @@unique([clusterId, itemId])
+  @@index([clusterId])
+  @@index([itemId])
+  @@index([similarity])
+}
+
+model ContextTemplate {
+  id              String               @id @default(cuid())
+  userId          String?
+  user            User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name            String
+  description     String?
+  template        String               // Template content with placeholders
+  variables       String               @default("{}") // JSON schema for template variables
+  targetModel     String?              // Optimized for specific model
+  category        String?              // Use case category
+  quality         Float?               // Quality score 0-1
+  usageCount      Int                  @default(0)
+  isPublic        Boolean              @default(false)
+  items           ContextTemplateItem[]
+  generations     ContextGeneration[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([userId])
+  @@index([category])
+  @@index([targetModel])
+  @@index([quality])
+}
+
+model ContextTemplateItem {
+  id              String           @id @default(cuid())
+  templateId      String
+  template        ContextTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  itemId          String
+  item            Item             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position        Int              @default(0)
+  role            String?          // system, user, assistant, context
+  weight          Float            @default(1.0) // Importance weight
+  createdAt       DateTime         @default(now())
+
+  @@unique([templateId, itemId])
+  @@index([templateId])
+  @@index([itemId])
+  @@index([position])
+}
+
+model ContextGeneration {
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId      String?
+  template        ContextTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  intent          String             // User's intent or goal
+  query           String?            // Original query or prompt
+  assemblyStrategy String            // automatic, semantic, manual, hybrid
+  generatedContext String            // Final assembled context
+  tokenCount      Int?               // Total tokens in generated context
+  cost            Float?             // Estimated cost for target model
+  targetModel     String?            // Target AI model
+  quality         Float?             // Quality score 0-1
+  confidence      Float?             // Confidence in assembly 0-1
+  metadata        String             @default("{}") // Additional generation metadata
+  items           ContextGenerationItem[]
+  createdAt       DateTime           @default(now())
+
+  @@index([userId])
+  @@index([templateId])
+  @@index([targetModel])
+  @@index([quality])
+  @@index([createdAt])
+}
+
+model ContextGenerationItem {
+  id              String            @id @default(cuid())
+  generationId    String
+  generation      ContextGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  itemId          String
+  item            Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position        Int               @default(0)
+  relevanceScore  Float?            // How relevant this item is to the intent
+  includedTokens  Int?              // Tokens from this item included in context
+  reason          String?           // Why this item was included
+  createdAt       DateTime          @default(now())
+
+  @@unique([generationId, itemId])
+  @@index([generationId])
+  @@index([itemId])
+  @@index([position])
+  @@index([relevanceScore])
+}
+
+model ModelOptimization {
+  id              String   @id @default(cuid())
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  targetModel     String   // openai-gpt4, anthropic-claude3, etc.
+  optimizedContent String
+  originalTokens  Int?
+  optimizedTokens Int?
+  tokenSavings    Int?     // originalTokens - optimizedTokens
+  costEstimate    Float?   // Estimated cost for target model
+  qualityScore    Float?   // Quality of optimization 0-1
+  strategy        String   // compression, restructuring, formatting, etc.
+  metadata        String   @default("{}")
+  status          String   @default("pending") // pending, approved, rejected
+  createdBy       String   // system, user, or specific agent
+  reviewedBy      String?
+  createdAt       DateTime @default(now())
+  reviewedAt      DateTime?
+
+  @@unique([itemId, targetModel])
+  @@index([itemId])
+  @@index([targetModel])
+  @@index([status])
+  @@index([qualityScore])
+}
+
+model ContentSummary {
+  id              String   @id @default(cuid())
+  itemId          String   @unique
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  summary         String   // AI-generated summary
+  keyPoints       String   @default("[]") // JSON array of key points
+  entities        String   @default("[]") // JSON array of extracted entities
+  concepts        String   @default("[]") // JSON array of concepts
+  complexity      String?  // simple, moderate, complex
+  readabilityScore Float?  // 0-1 readability score
+  sentimentScore  Float?   // -1 to 1 sentiment
+  language        String?  // Detected language
+  wordCount       Int?
+  createdBy       String   // AI model used for generation
+  confidence      Float?   // Confidence in summary quality
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([complexity])
+  @@index([language])
+  @@index([confidence])
+}
+
+model SemanticSearch {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query           String   // Original search query
+  queryEmbedding  String   // JSON array of query embedding
+  results         String   // JSON array of search results with scores
+  resultCount     Int
+  algorithm       String   // cosine, euclidean, dot_product
+  threshold       Float    // Similarity threshold used
+  executionTime   Int?     // Milliseconds to execute
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ScheduledExport {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String   // Display name for the scheduled export
+  format            String   // pdf, csv, json, xlsx, png
+  reportType        String   // summary, detailed, custom
+  timeRange         String   // 7d, 30d, 90d, 1y, custom
+  sections          String   // JSON array of section IDs
+  includeCharts     Boolean  @default(true)
+  includeRawData    Boolean  @default(false)
+  recipients        String   // JSON array of email addresses
+  frequency         String   // daily, weekly, monthly
+  scheduledTime     String   // HH:MM format
+  isActive          Boolean  @default(true)
+  nextExecution     DateTime
+  lastExecution     DateTime?
+  customTitle       String?
+  customDescription String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([nextExecution])
+  @@index([isActive])
 }

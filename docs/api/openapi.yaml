@@ -1,0 +1,903 @@
+openapi: 3.0.3
+info:
+  title: ContextForge API
+  description: |
+    ContextForge API provides comprehensive context management capabilities with AI-powered features.
+    
+    ## Authentication
+    
+    The API supports multiple authentication methods:
+    - API Key authentication via `Authorization: Bearer <token>` header
+    - Session-based authentication via cookies
+    
+    ## Rate Limiting
+    
+    API requests are rate limited based on your subscription plan:
+    - Free: 100 requests/hour
+    - Pro: 1,000 requests/hour  
+    - Enterprise: 10,000 requests/hour
+    
+    ## Error Handling
+    
+    The API uses conventional HTTP response codes:
+    - 2xx: Success
+    - 4xx: Client errors
+    - 5xx: Server errors
+    
+    All errors return a JSON object with an `error` field describing the issue.
+    
+  version: 1.0.0
+  contact:
+    name: ContextForge Support
+    url: https://contextforge.com/support
+    email: support@contextforge.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.contextforge.com/v1
+    description: Production server
+  - url: https://staging-api.contextforge.com/v1
+    description: Staging server
+  - url: http://localhost:3000/api
+    description: Local development server
+
+security:
+  - BearerAuth: []
+  - CookieAuth: []
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Context Items
+    description: Manage prompts, rules, agents, and collections
+  - name: Folders
+    description: Organize content in hierarchical folders
+  - name: Search
+    description: Semantic and keyword search capabilities
+  - name: Intelligence
+    description: AI-powered analysis, optimization, and classification
+  - name: Import/Export
+    description: Bulk operations for content management
+  - name: Jobs
+    description: Background job status and monitoring
+  - name: Settings
+    description: User preferences and API key management
+
+paths:
+  # Authentication
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      description: Authenticate user and create session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+                    description: JWT authentication token
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: User logout
+      description: Invalidate current session
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out successfully
+
+  /auth/register:
+    post:
+      tags: [Authentication]
+      summary: User registration
+      description: Create new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email:
+                  type: string
+                  format: email
+                name:
+                  type: string
+                  minLength: 2
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+        '409':
+          description: User already exists
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Context Items
+  /items:
+    get:
+      tags: [Context Items]
+      summary: List context items
+      description: Retrieve a list of context items with optional filtering
+      parameters:
+        - name: type
+          in: query
+          description: Filter by item type
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [prompt, rule, agent, collection]
+        - name: folderId
+          in: query
+          description: Filter by folder ID
+          schema:
+            type: string
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of items to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+        - name: offset
+          in: query
+          description: Number of items to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: sortBy
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            enum: [name, createdAt, updatedAt, score]
+            default: updatedAt
+        - name: sortOrder
+          in: query
+          description: Sort order
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Items retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContextItem'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [Context Items]
+      summary: Create context item
+      description: Create a new context item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateContextItem'
+      responses:
+        '201':
+          description: Item created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/ContextItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /items/{id}:
+    get:
+      tags: [Context Items]
+      summary: Get context item
+      description: Retrieve a specific context item by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/ContextItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags: [Context Items]
+      summary: Update context item
+      description: Update an existing context item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateContextItem'
+      responses:
+        '200':
+          description: Item updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item:
+                    $ref: '#/components/schemas/ContextItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    delete:
+      tags: [Context Items]
+      summary: Delete context item
+      description: Delete a context item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Item deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Item deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # Folders
+  /folders:
+    get:
+      tags: [Folders]
+      summary: List folders
+      description: Retrieve folder hierarchy
+      parameters:
+        - name: flat
+          in: query
+          description: Return flat list instead of hierarchy
+          schema:
+            type: boolean
+            default: false
+        - name: includeItems
+          in: query
+          description: Include items in response
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Folders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Folder'
+
+    post:
+      tags: [Folders]
+      summary: Create folder
+      description: Create a new folder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFolder'
+      responses:
+        '201':
+          description: Folder created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  folder:
+                    $ref: '#/components/schemas/Folder'
+
+  # Intelligence Features
+  /intelligence/search:
+    post:
+      tags: [Intelligence]
+      summary: Semantic search
+      description: Perform AI-powered semantic search across content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: Search query
+                  example: "How to optimize database queries"
+                types:
+                  type: array
+                  items:
+                    type: string
+                    enum: [prompt, rule, agent, collection]
+                limit:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 10
+                threshold:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.5
+                  description: Similarity threshold
+      responses:
+        '200':
+          description: Search completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/ContextItem'
+                        - type: object
+                          properties:
+                            similarity:
+                              type: number
+                              description: Similarity score
+                  query:
+                    type: string
+                  total:
+                    type: integer
+
+  /intelligence/optimization:
+    post:
+      tags: [Intelligence]
+      summary: Optimize content
+      description: AI-powered content optimization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemId]
+              properties:
+                itemId:
+                  type: string
+                model:
+                  type: string
+                  enum: [gpt-4, claude, gemini]
+                  default: gpt-4
+                creativity:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.7
+                focusAreas:
+                  type: array
+                  items:
+                    type: string
+                    enum: [clarity, structure, engagement, conciseness]
+                  default: [clarity, structure]
+                preserveStructure:
+                  type: boolean
+                  default: false
+                preview:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Optimization completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  optimizedContent:
+                    type: string
+                  improvement:
+                    type: number
+                    description: Quality improvement percentage
+                  changes:
+                    type: array
+                    items:
+                      type: string
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+
+  /intelligence/batch:
+    post:
+      tags: [Intelligence]
+      summary: Batch AI operations
+      description: Perform AI operations on multiple items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemIds, operation]
+              properties:
+                itemIds:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 100
+                operation:
+                  type: string
+                  enum: [optimize, classify, analyze]
+                options:
+                  type: object
+                  description: Operation-specific options
+      responses:
+        '202':
+          description: Batch operation started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending, running, completed, failed]
+                  estimatedDuration:
+                    type: integer
+                    description: Estimated duration in seconds
+
+  # Jobs
+  /jobs/{id}:
+    get:
+      tags: [Jobs]
+      summary: Get job status
+      description: Retrieve status and results of a background job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+
+  # Health Check
+  /health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Check API health and status
+      security: []
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  version:
+                    type: string
+                    example: 1.0.0
+                  uptime:
+                    type: integer
+                    description: Uptime in milliseconds
+                  timestamp:
+                    type: string
+                    format: date-time
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: auth-token
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ContextItem:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [prompt, rule, agent, collection]
+        description:
+          type: string
+        content:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        folderId:
+          type: string
+        folderPath:
+          type: string
+        metadata:
+          type: object
+        quality:
+          type: object
+          properties:
+            score:
+              type: number
+              minimum: 0
+              maximum: 1
+            issues:
+              type: array
+              items:
+                type: string
+            suggestions:
+              type: array
+              items:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateContextItem:
+      type: object
+      required: [name, type, content]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          type: string
+          enum: [prompt, rule, agent, collection]
+        description:
+          type: string
+          maxLength: 1000
+        content:
+          type: string
+          minLength: 1
+        tags:
+          type: array
+          items:
+            type: string
+        folderId:
+          type: string
+        metadata:
+          type: object
+
+    UpdateContextItem:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 1000
+        content:
+          type: string
+          minLength: 1
+        tags:
+          type: array
+          items:
+            type: string
+        folderId:
+          type: string
+        metadata:
+          type: object
+
+    Folder:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        path:
+          type: string
+        level:
+          type: integer
+        parentId:
+          type: string
+        color:
+          type: string
+        icon:
+          type: string
+        itemCount:
+          type: integer
+        childCount:
+          type: integer
+        isTemplate:
+          type: boolean
+        autoOrganize:
+          type: boolean
+        organizationRules:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateFolder:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        parentId:
+          type: string
+        color:
+          type: string
+        icon:
+          type: string
+        isTemplate:
+          type: boolean
+          default: false
+        autoOrganize:
+          type: boolean
+          default: false
+        organizationRules:
+          type: object
+          default: {}
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [import, export, optimize, classify, analyze]
+        status:
+          type: string
+          enum: [pending, running, completed, failed]
+        progress:
+          type: number
+          minimum: 0
+          maximum: 100
+        totalItems:
+          type: integer
+        processedItems:
+          type: integer
+        results:
+          type: object
+        error:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Error message
+        code:
+          type: string
+          description: Error code
+        details:
+          type: object
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Invalid input parameters
+            code: BAD_REQUEST
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Authentication required
+            code: UNAUTHORIZED
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Insufficient permissions
+            code: FORBIDDEN
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Resource not found
+            code: NOT_FOUND
+
+    RateLimited:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Rate limit exceeded
+            code: RATE_LIMITED
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: Internal server error
+            code: INTERNAL_ERROR

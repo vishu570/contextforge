@@ -15,7 +15,9 @@ import {
   Grid, 
   List,
   Move,
-  Plus
+  Plus,
+  Edit,
+  ExternalLink
 } from 'lucide-react';
 
 import { FolderTree } from '@/components/folder-tree';
@@ -25,7 +27,9 @@ import { BulkMoveDialog } from '@/components/bulk-move-dialog';
 import { FolderTemplates } from '@/components/folder-templates';
 import { FolderSharing } from '@/components/folder-sharing';
 import { FolderAnalytics } from '@/components/folder-analytics';
+import { AISuggestions } from '@/components/ai-suggestions';
 import { toast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 interface FolderManagementInterfaceProps {
   initialFolders: any[];
@@ -196,6 +200,19 @@ export function FolderManagementInterface({
     }
   };
 
+  const refreshFolders = async () => {
+    try {
+      const response = await fetch('/api/folders');
+      if (!response.ok) throw new Error('Failed to refresh folders');
+      
+      const { folders } = await response.json();
+      setFolders(folders);
+    } catch (error) {
+      console.error('Error refreshing folders:', error);
+      toast({ title: 'Failed to refresh folders', variant: 'destructive' });
+    }
+  };
+
   const handleItemSelect = (itemId: string, selected: boolean) => {
     setSelectedItems(prev => 
       selected 
@@ -311,9 +328,10 @@ export function FolderManagementInterface({
                   {filteredItems.map((item) => (
                     <Card 
                       key={item.id} 
-                      className={`hover:shadow-md transition-shadow ${
+                      className={`hover:shadow-md transition-shadow cursor-pointer ${
                         selectedItems.includes(item.id) ? 'ring-2 ring-primary' : ''
                       }`}
+                      onClick={() => window.open(`/dashboard/${item.type}s/${item.id}/edit`, '_blank')}
                     >
                       <CardHeader className="pb-3">
                         <div className="flex items-start space-x-3">
@@ -322,6 +340,7 @@ export function FolderManagementInterface({
                             onCheckedChange={(checked) => 
                               handleItemSelect(item.id, checked as boolean)
                             }
+                            onClick={(e) => e.stopPropagation()}
                           />
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-lg truncate">{item.name}</CardTitle>
@@ -332,7 +351,14 @@ export function FolderManagementInterface({
                               )}
                             </div>
                           </div>
-                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <div className="flex space-x-1">
+                            <Button variant="ghost" size="icon" asChild onClick={(e) => e.stopPropagation()}>
+                              <Link href={`/dashboard/${item.type}s/${item.id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <FileText className="h-5 w-5 text-muted-foreground" />
+                          </div>
                         </div>
                       </CardHeader>
                       {viewMode === 'grid' && (
@@ -360,24 +386,16 @@ export function FolderManagementInterface({
         </TabsContent>
 
         <TabsContent value="suggestions" className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium mb-4">AI-Powered Organization</h3>
-            <p className="text-muted-foreground mb-6">
-              Let AI analyze your content and suggest optimal folder structures.
-            </p>
-            {/* AI Suggestions component would go here */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8">
-                  <Sparkles className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">AI Suggestions Coming Soon</h3>
-                  <p className="text-muted-foreground">
-                    AI-powered folder organization suggestions are in development.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <AISuggestions 
+            items={items.map(item => ({
+              id: item.id,
+              name: item.name,
+              type: item.type,
+              subType: item.subType,
+              format: item.format
+            }))}
+            onRefreshFolders={refreshFolders}
+          />
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-6">

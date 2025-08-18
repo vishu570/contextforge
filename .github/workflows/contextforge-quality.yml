@@ -1,0 +1,352 @@
+name: ContextForge Quality Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'prompts/**'
+      - 'contexts/**'
+      - 'rules/**'
+      - 'agents/**'
+  push:
+    branches: [main]
+    paths:
+      - 'prompts/**'
+      - 'contexts/**'
+      - 'rules/**'
+      - 'agents/**'
+  workflow_dispatch:
+    inputs:
+      check_mode:
+        description: 'Quality check mode'
+        required: true
+        default: 'analysis'
+        type: choice
+        options:
+        - analysis
+        - optimization
+        - classification
+        - full
+      target_folder:
+        description: 'Target folder (optional)'
+        required: false
+        type: string
+      quality_threshold:
+        description: 'Quality threshold (0-1)'
+        required: false
+        default: '0.7'
+        type: string
+
+env:
+  CONTEXTFORGE_API_URL: ${{ vars.CONTEXTFORGE_API_URL || 'https://api.contextforge.com' }}
+  CONTEXTFORGE_API_KEY: ${{ secrets.CONTEXTFORGE_API_KEY }}
+
+jobs:
+  quality-analysis:
+    runs-on: ubuntu-latest
+    outputs:
+      quality-score: ${{ steps.analysis.outputs.quality-score }}
+      needs-optimization: ${{ steps.analysis.outputs.needs-optimization }}
+      total-items: ${{ steps.analysis.outputs.total-items }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install ContextForge CLI
+        run: npm install -g @contextforge/cli
+
+      - name: Configure ContextForge CLI
+        run: |
+          contextforge config set apiUrl "$CONTEXTFORGE_API_URL"
+          contextforge config set apiKey "$CONTEXTFORGE_API_KEY"
+
+      - name: Detect changed files
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -E '\.(md|txt|yaml|yml|json)$' | grep -E '^(prompts|contexts|rules|agents)/' || true)
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -E '\.(md|txt|yaml|yml|json)$' | grep -E '^(prompts|contexts|rules|agents)/' || true)
+          else
+            # Manual trigger - check all files
+            CHANGED_FILES=$(find prompts contexts rules agents -name "*.md" -o -name "*.txt" -o -name "*.yaml" -o -name "*.yml" -o -name "*.json" 2>/dev/null || true)
+          fi
+          
+          echo "changed-files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          CHANGED_COUNT=$(echo "$CHANGED_FILES" | wc -l)
+          echo "Found $CHANGED_COUNT files to analyze"
+
+      - name: Upload files for analysis
+        if: steps.changes.outputs.changed-files != ''
+        id: upload
+        run: |
+          echo "📤 Uploading files for quality analysis..."
+          
+          # Create temporary folder for this analysis
+          TEMP_FOLDER="quality-check-$(date +%s)"
+          echo "temp-folder=$TEMP_FOLDER" >> $GITHUB_OUTPUT
+          
+          contextforge folders create --name "$TEMP_FOLDER" --description "Temporary folder for quality analysis"
+          FOLDER_ID=$(contextforge folders list --format json | jq -r ".[] | select(.name == \"$TEMP_FOLDER\") | .id")
+          echo "folder-id=$FOLDER_ID" >> $GITHUB_OUTPUT
+          
+          # Upload changed files
+          UPLOADED_IDS=""
+          echo "${{ steps.changes.outputs.changed-files }}" | while read -r file; do
+            if [ -n "$file" ] && [ -f "$file" ]; then
+              echo "Uploading: $file"
+              
+              # Determine type based on directory
+              TYPE="prompt"
+              if [[ "$file" == rules/* ]]; then
+                TYPE="rule"
+              elif [[ "$file" == agents/* ]]; then
+                TYPE="agent"
+              fi
+              
+              RESULT=$(contextforge items create \
+                --name "$(basename "$file")" \
+                --type "$TYPE" \
+                --folder "$FOLDER_ID" \
+                --file "$file" \
+                --format json)
+              
+              ITEM_ID=$(echo "$RESULT" | jq -r '.id')
+              UPLOADED_IDS="$UPLOADED_IDS $ITEM_ID"
+            fi
+          done
+          
+          echo "uploaded-ids=$UPLOADED_IDS" >> $GITHUB_OUTPUT
+
+      - name: Run quality analysis
+        if: steps.upload.outputs.uploaded-ids != ''
+        id: analysis
+        run: |
+          echo "🔍 Running quality analysis..."
+          
+          QUALITY_THRESHOLD="${{ github.event.inputs.quality_threshold || '0.7' }}"
+          TOTAL_ITEMS=0
+          TOTAL_SCORE=0
+          LOW_QUALITY_ITEMS=0
+          ANALYSIS_RESULTS=""
+          
+          for ITEM_ID in ${{ steps.upload.outputs.uploaded-ids }}; do
+            if [ -n "$ITEM_ID" ] && [ "$ITEM_ID" != "null" ]; then
+              echo "Analyzing item: $ITEM_ID"
+              
+              ANALYSIS=$(contextforge optimize analyze "$ITEM_ID" --format json)
+              SCORE=$(echo "$ANALYSIS" | jq -r '.score // 0')
+              NAME=$(echo "$ANALYSIS" | jq -r '.name // "Unknown"')
+              
+              TOTAL_ITEMS=$((TOTAL_ITEMS + 1))
+              TOTAL_SCORE=$(echo "$TOTAL_SCORE + $SCORE" | bc -l)
+              
+              if (( $(echo "$SCORE < $QUALITY_THRESHOLD" | bc -l) )); then
+                LOW_QUALITY_ITEMS=$((LOW_QUALITY_ITEMS + 1))
+              fi
+              
+              ANALYSIS_RESULTS="$ANALYSIS_RESULTS\n- **$NAME**: $(echo "scale=2; $SCORE * 100" | bc)%"
+            fi
+          done
+          
+          AVERAGE_SCORE=$(echo "scale=3; $TOTAL_SCORE / $TOTAL_ITEMS" | bc -l)
+          NEEDS_OPTIMIZATION=$([ $LOW_QUALITY_ITEMS -gt 0 ] && echo "true" || echo "false")
+          
+          echo "quality-score=$AVERAGE_SCORE" >> $GITHUB_OUTPUT
+          echo "needs-optimization=$NEEDS_OPTIMIZATION" >> $GITHUB_OUTPUT
+          echo "total-items=$TOTAL_ITEMS" >> $GITHUB_OUTPUT
+          echo "low-quality-items=$LOW_QUALITY_ITEMS" >> $GITHUB_OUTPUT
+          
+          # Save detailed results
+          echo "analysis-results<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$ANALYSIS_RESULTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate quality report
+        if: steps.upload.outputs.uploaded-ids != ''
+        run: |
+          echo "📊 Generating quality report..."
+          
+          AVERAGE_SCORE_PERCENT=$(echo "scale=1; ${{ steps.analysis.outputs.quality-score }} * 100" | bc)
+          
+          cat > quality-report.md << EOF
+          # ContextForge Quality Report
+          
+          **Workflow:** ${{ github.workflow }}
+          **Trigger:** ${{ github.event_name }}
+          **Branch:** ${{ github.ref_name }}
+          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## Quality Summary
+          
+          - **Total Items Analyzed:** ${{ steps.analysis.outputs.total-items }}
+          - **Average Quality Score:** ${AVERAGE_SCORE_PERCENT}%
+          - **Quality Threshold:** ${{ github.event.inputs.quality_threshold || '70' }}%
+          - **Items Below Threshold:** ${{ steps.analysis.outputs.low-quality-items }}
+          - **Needs Optimization:** ${{ steps.analysis.outputs.needs-optimization }}
+          
+          ## Quality Status
+          
+          EOF
+          
+          if [ "${{ steps.analysis.outputs.needs-optimization }}" = "true" ]; then
+            cat >> quality-report.md << EOF
+          ⚠️ **Quality issues detected!**
+          
+          Some items fall below the quality threshold and should be reviewed or optimized.
+          
+          EOF
+          else
+            cat >> quality-report.md << EOF
+          ✅ **All items meet quality standards!**
+          
+          EOF
+          fi
+          
+          cat >> quality-report.md << EOF
+          ## Individual Item Scores
+          
+          ${{ steps.analysis.outputs.analysis-results }}
+          
+          ## Recommendations
+          
+          EOF
+          
+          if [ "${{ steps.analysis.outputs.needs-optimization }}" = "true" ]; then
+            cat >> quality-report.md << EOF
+          1. Review items with low quality scores
+          2. Consider running automatic optimization:
+             \`\`\`bash
+             contextforge optimize batch --folder "${{ steps.upload.outputs.folder-id }}"
+             \`\`\`
+          3. Update content based on AI suggestions
+          4. Re-run quality analysis after improvements
+          
+          EOF
+          else
+            cat >> quality-report.md << EOF
+          - All items meet the quality threshold
+          - Consider periodic reviews to maintain quality
+          - Use classification to improve organization
+          
+          EOF
+          fi
+          
+          echo "Quality report generated:"
+          cat quality-report.md
+
+      - name: Upload quality report
+        if: steps.upload.outputs.uploaded-ids != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-report-${{ github.run_id }}
+          path: quality-report.md
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps.upload.outputs.uploaded-ids != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('quality-report.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Set PR status
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const needsOptimization = '${{ steps.analysis.outputs.needs-optimization }}' === 'true';
+            const averageScore = parseFloat('${{ steps.analysis.outputs.quality-score }}');
+            const threshold = parseFloat('${{ github.event.inputs.quality_threshold || '0.7' }}');
+            
+            const state = needsOptimization ? 'failure' : 'success';
+            const description = needsOptimization 
+              ? `Quality below threshold (${(averageScore * 100).toFixed(1)}% < ${(threshold * 100)}%)`
+              : `Quality check passed (${(averageScore * 100).toFixed(1)}%)`;
+            
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: state,
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              description: description,
+              context: 'ContextForge Quality Check'
+            });
+
+      - name: Cleanup temporary folder
+        if: always() && steps.upload.outputs.folder-id != ''
+        run: |
+          echo "🧹 Cleaning up temporary folder..."
+          contextforge folders delete "${{ steps.upload.outputs.folder-id }}" --yes || true
+
+  optimization:
+    needs: quality-analysis
+    if: github.event.inputs.check_mode == 'optimization' || github.event.inputs.check_mode == 'full'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install ContextForge CLI
+        run: npm install -g @contextforge/cli
+
+      - name: Configure ContextForge CLI
+        run: |
+          contextforge config set apiUrl "$CONTEXTFORGE_API_URL"
+          contextforge config set apiKey "$CONTEXTFORGE_API_KEY"
+
+      - name: Run optimization suggestions
+        run: |
+          echo "💡 Generating optimization suggestions..."
+          contextforge optimize suggest --sample-size 20
+
+  summary:
+    needs: [quality-analysis, optimization]
+    if: always()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo "## ContextForge Quality Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Overall Status:** ${{ needs.quality-analysis.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Items Analyzed:** ${{ needs.quality-analysis.outputs.total-items }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Average Quality:** $(echo "scale=1; ${{ needs.quality-analysis.outputs.quality-score || 0 }} * 100" | bc)%" >> $GITHUB_STEP_SUMMARY
+          echo "**Needs Optimization:** ${{ needs.quality-analysis.outputs.needs-optimization }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.quality-analysis.outputs.needs-optimization }}" = "true" ]; then
+            echo "### ⚠️ Action Required" >> $GITHUB_STEP_SUMMARY
+            echo "Some content items fall below the quality threshold and should be reviewed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ Quality Standards Met" >> $GITHUB_STEP_SUMMARY
+            echo "All analyzed content meets the quality standards." >> $GITHUB_STEP_SUMMARY
+          fi

@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # ContextForge Development Server
+  contextforge-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: contextforge-dev
+    ports:
+      - "3000:3000"
+      - "5555:5555"  # Prisma Studio
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=file:/app/data/dev.db
+      - REDIS_URL=redis://redis-dev:6379
+      - NEXTAUTH_SECRET=dev-secret-key
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      - dev_data:/app/data
+    depends_on:
+      - redis-dev
+    restart: unless-stopped
+    networks:
+      - contextforge-dev-network
+    command: ["npm", "run", "dev"]
+
+  # Redis for development
+  redis-dev:
+    image: redis:7-alpine
+    container_name: contextforge-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - contextforge-dev-network
+
+  # RedisInsight for Redis GUI (development)
+  redis-insight:
+    image: redislabs/redisinsight:latest
+    container_name: contextforge-redis-insight
+    ports:
+      - "8001:8001"
+    volumes:
+      - redis_insight_data:/db
+    restart: unless-stopped
+    networks:
+      - contextforge-dev-network
+
+  # Mailhog for email testing (development)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: contextforge-mailhog
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    restart: unless-stopped
+    networks:
+      - contextforge-dev-network
+
+  # Vector database for development
+  qdrant-dev:
+    image: qdrant/qdrant:latest
+    container_name: contextforge-qdrant-dev
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_dev_data:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - contextforge-dev-network
+
+volumes:
+  dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+  redis_insight_data:
+    driver: local
+  qdrant_dev_data:
+    driver: local
+
+networks:
+  contextforge-dev-network:
+    driver: bridge
