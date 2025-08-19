@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import ContextAssemblyEngine from '@/lib/context/assembly';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const assemblyEngine = new ContextAssemblyEngine(session.user.id);
+    const assemblyEngine = new ContextAssemblyEngine(user.id);
     
     const templateId = await assemblyEngine.createTemplate(name, template, {
       description,
@@ -53,12 +58,17 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const assemblyEngine = new ContextAssemblyEngine(session.user.id);
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const assemblyEngine = new ContextAssemblyEngine(user.id);
     const templates = await assemblyEngine.getUserTemplates();
 
     return NextResponse.json({
@@ -75,8 +85,13 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -106,7 +121,7 @@ export async function PUT(request: NextRequest) {
       where: { id: templateId },
     });
 
-    if (!existingTemplate || existingTemplate.userId !== session.user.id) {
+    if (!existingTemplate || existingTemplate.userId !== user.id) {
       return NextResponse.json(
         { error: 'Template not found or unauthorized' },
         { status: 404 }
@@ -140,8 +155,13 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -162,7 +182,7 @@ export async function DELETE(request: NextRequest) {
       where: { id: templateId },
     });
 
-    if (!existingTemplate || existingTemplate.userId !== session.user.id) {
+    if (!existingTemplate || existingTemplate.userId !== user.id) {
       return NextResponse.json(
         { error: 'Template not found or unauthorized' },
         { status: 404 }

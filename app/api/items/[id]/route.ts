@@ -256,27 +256,30 @@ export async function DELETE(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    // Delete the item (cascade will handle related records)
-    await prisma.item.delete({
-      where: { id },
-    });
+    // Use transaction to ensure audit log is created before deletion
+    await prisma.$transaction(async (tx) => {
+      // Create audit log before deletion
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          itemId: id,
+          action: 'delete',
+          entityType: 'item',
+          entityId: id,
+          metadata: JSON.stringify({
+            deletedItem: {
+              name: existingItem.name,
+              type: existingItem.type,
+              format: existingItem.format,
+            },
+          }),
+        },
+      });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        itemId: id,
-        action: 'delete',
-        entityType: 'item',
-        entityId: id,
-        metadata: JSON.stringify({
-          deletedItem: {
-            name: existingItem.name,
-            type: existingItem.type,
-            format: existingItem.format,
-          },
-        }),
-      },
+      // Delete the item (cascade will handle related records)
+      await tx.item.delete({
+        where: { id },
+      });
     });
 
     return NextResponse.json({ success: true });

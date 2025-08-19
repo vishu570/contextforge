@@ -287,6 +287,39 @@ export function EditItemForm({ item, availableTags, type, userId }: EditItemForm
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this item? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/items/${item.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Success',
+          description: 'Item deleted successfully',
+        });
+        router.push(`/dashboard/${type}`);
+      } else {
+        const error = await response.json();
+        toast({
+          title: 'Error',
+          description: error.error || 'Failed to delete item',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete item',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const copyShareUrl = () => {
     if (shareUrl) {
       navigator.clipboard.writeText(shareUrl);
@@ -517,7 +550,7 @@ export function EditItemForm({ item, availableTags, type, userId }: EditItemForm
 
                 <div>
                   <Label htmlFor="content">Content</Label>
-                  <div className="mt-2 border rounded-md overflow-hidden">
+                  <div className="mt-2 border rounded-md overflow-hidden bg-background">
                     <MonacoEditor
                       height="400px"
                       language={getEditorLanguage(form.watch('format'))}
@@ -531,6 +564,11 @@ export function EditItemForm({ item, availableTags, type, userId }: EditItemForm
                         bracketMatching: 'always',
                         automaticLayout: true,
                         theme: 'vs-dark',
+                        fontSize: 14,
+                        fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                        scrollBeyondLastLine: false,
+                        renderLineHighlight: 'line',
+                        selectOnLineNumbers: true,
                       }}
                     />
                   </div>
@@ -872,6 +910,15 @@ export function EditItemForm({ item, availableTags, type, userId }: EditItemForm
             >
               <X className="mr-2 h-4 w-4" />
               Cancel
+            </Button>
+            
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
             </Button>
           </div>
 

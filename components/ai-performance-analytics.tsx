@@ -105,13 +105,13 @@ interface AIPerformanceAnalyticsProps {
 }
 
 const MODEL_COLORS = {
-  'gpt-4': '#10b981',
-  'gpt-3.5-turbo': '#3b82f6',
-  'claude-3-opus': '#8b5cf6',
-  'claude-3-sonnet': '#a855f7',
-  'claude-3-haiku': '#c084fc',
-  'gemini-pro': '#f59e0b',
-  'gemini-flash': '#fbbf24'
+  'gpt-5-2025-08-07': '#10b981',
+  'gpt-4o': '#3b82f6',
+  'claude-sonnet-4-20250514': '#8b5cf6',
+  'claude-haiku-4-20250514': '#a855f7',
+  'claude-opus-4-20250514': '#c084fc',
+  'gemini-2.0-flash': '#f59e0b',
+  'gemini-pro': '#fbbf24'
 };
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
@@ -180,18 +180,8 @@ export function AIPerformanceAnalytics({
       count: metrics.count
     }));
 
-    // Performance trends (mock data for demonstration)
-    const performanceTrends = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - i));
-      return {
-        date: date.toISOString().split('T')[0],
-        responseTime: 2000 + Math.random() * 3000,
-        successRate: 90 + Math.random() * 10,
-        cost: 0.02 + Math.random() * 0.08,
-        requests: 50 + Math.random() * 100
-      };
-    });
+    // Use actual performance trends from API or empty array if not available
+    const performanceTrends = data.performanceTrends || [];
 
     return {
       modelComparison,

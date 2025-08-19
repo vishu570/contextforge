@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import ModelOptimizer from '@/lib/models/optimizers';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -28,7 +33,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const optimizer = new ModelOptimizer(session.user.id);
+    const optimizer = new ModelOptimizer(user.id);
     
     const result = await optimizer.optimizeForModel(content, targetModel, {
       maxTokenBudget,
@@ -66,8 +71,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -82,7 +92,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const optimizer = new ModelOptimizer(session.user.id);
+    const optimizer = new ModelOptimizer(user.id);
     const optimization = await optimizer.getOptimization(itemId, targetModel);
 
     if (!optimization) {

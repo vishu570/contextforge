@@ -324,3 +324,16 @@ export class JobQueue {
 
 export const jobQueue = JobQueue.getInstance();
 export { queues };
+
+// Re-export types
+export {
+  JobType,
+  JobPriority,
+  JobStatus,
+  JobData,
+  JobResult,
+  JobProgress,
+  Job,
+  WebSocketMessageType,
+  WebSocketMessage,
+} from './types';

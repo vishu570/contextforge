@@ -255,7 +255,7 @@ Return only the optimized content without explanations.`;
 
     try {
       const optimizedContent = await this.llmService.generateResponse(optimizationPrompt, {
-        model: 'gpt-4o',
+        model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
         userId: validatedData.userId,
       });
       

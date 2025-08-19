@@ -1,19 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { prisma } from '@/lib/db';
 import { redis } from '@/lib/redis';
 import { WebSocketManager } from '@/lib/websocket/manager';
+import { WebSocketEventType } from '@/lib/websocket/types';
 
 // GET /api/analytics/alerts - Get user alerts and monitoring status
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = user.id;
     const { searchParams } = new URL(request.url);
     const includeResolved = searchParams.get('resolved') === 'true';
 
@@ -56,12 +62,17 @@ export async function GET(request: NextRequest) {
 // POST /api/analytics/alerts - Create or update alert
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = user.id;
     const body = await request.json();
     const { type, title, message, severity, threshold, metadata, autoResolve } = body;
 
@@ -77,11 +88,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Broadcast alert to user
-    const wsManager = WebSocketManager.getInstance();
-    wsManager.broadcastToUser(userId, {
-      type: 'new_alert',
-      data: alert
-    });
+    // const wsManager = WebSocketManager.getInstance();
+    // wsManager.broadcastToUser(userId, {
+    //   type: WebSocketEventType.ALERT,
+    //   data: alert,
+    //   timestamp: new Date()
+    // });
 
     return NextResponse.json(alert);
   } catch (error) {
@@ -96,12 +108,17 @@ export async function POST(request: NextRequest) {
 // PUT /api/analytics/alerts - Update alert settings
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = user.id;
     const body = await request.json();
     const { settings } = body;
 
@@ -120,12 +137,17 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/analytics/alerts - Resolve or dismiss alert
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = user.id;
     const { searchParams } = new URL(request.url);
     const alertId = searchParams.get('id');
     const action = searchParams.get('action') || 'resolve';
@@ -162,7 +184,7 @@ async function getActiveAlerts(userId: string, includeResolved: boolean = false)
       .filter(alert => alert && (includeResolved || alert.status !== 'resolved'))
       .sort((a, b) => {
         // Sort by severity (high > medium > low) then by timestamp
-        const severityOrder = { high: 3, medium: 2, low: 1 };
+        const severityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
         const severityDiff = (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0);
         if (severityDiff !== 0) return severityDiff;
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();

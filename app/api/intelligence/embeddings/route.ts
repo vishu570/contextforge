@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { EmbeddingService } from '@/lib/embeddings';
 import { prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -21,7 +26,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const embeddingService = new EmbeddingService(session.user.id);
+    const embeddingService = new EmbeddingService(user.id);
     
     // Generate and store embedding
     const result = await embeddingService.embedItem(itemId, content, providerId);
@@ -46,8 +51,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -72,7 +82,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (!embedding || embedding.item.userId !== session.user.id) {
+    if (!embedding || embedding.item.userId !== user.id) {
       return NextResponse.json(
         { error: 'Embedding not found' },
         { status: 404 }
@@ -99,8 +109,13 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -114,7 +129,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const embeddingService = new EmbeddingService(session.user.id);
+    const embeddingService = new EmbeddingService(user.id);
     await embeddingService.deleteEmbeddings(itemId);
 
     return NextResponse.json({ success: true });

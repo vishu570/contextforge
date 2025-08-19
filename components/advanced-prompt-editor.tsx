@@ -163,11 +163,11 @@ interface AdvancedPromptEditorProps {
 }
 
 const AI_MODELS = [
-  { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', costPer1K: 0.03 },
-  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI', costPer1K: 0.001 },
-  { id: 'claude-3-opus', name: 'Claude 3 Opus', provider: 'Anthropic', costPer1K: 0.015 },
-  { id: 'claude-3-sonnet', name: 'Claude 3 Sonnet', provider: 'Anthropic', costPer1K: 0.003 },
-  { id: 'gemini-pro', name: 'Gemini Pro', provider: 'Google', costPer1K: 0.0005 },
+  { id: 'gpt-5-2025-08-07', name: 'GPT-5', provider: 'OpenAI', costPer1K: 0.01 },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', costPer1K: 0.005 },
+  { id: 'claude-sonnet-4-20250514', name: 'Claude 4 Sonnet', provider: 'Anthropic', costPer1K: 0.003 },
+  { id: 'claude-haiku-4-20250514', name: 'Claude 4 Haiku', provider: 'Anthropic', costPer1K: 0.001 },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', costPer1K: 0.0035 },
 ];
 
 const TEMPLATE_BLOCKS: TemplateBlock[] = [
@@ -257,7 +257,7 @@ export function AdvancedPromptEditor({
       content: initialData?.content || '',
       description: initialData?.description || '',
       variables: variables,
-      targetModels: initialData?.targetModels || ['gpt-4'],
+      targetModels: initialData?.targetModels || ['gpt-5-2025-08-07'],
       format: initialData?.format || 'text',
       category: initialData?.category || '',
       tags: initialData?.tags || [],

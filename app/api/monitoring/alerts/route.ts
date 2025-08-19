@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getUserFromToken } from '@/lib/auth';
 import { z } from 'zod';
 import { redis } from '@/lib/redis';
 import { WebSocketManager } from '@/lib/websocket/manager';
@@ -20,16 +20,21 @@ const AlertConfigSchema = z.object({
 // GET /api/monitoring/alerts - Get alert configurations
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const alertsData = await redis.get(`alerts:${session.user.id}`);
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const alertsData = await redis.get(`alerts:${user.id}`);
     const alerts = alertsData ? JSON.parse(alertsData) : [];
 
     // Get recent alert history
-    const historyData = await redis.get(`alert_history:${session.user.id}`);
+    const historyData = await redis.get(`alert_history:${user.id}`);
     const history = historyData ? JSON.parse(historyData) : [];
 
     return NextResponse.json({
@@ -48,8 +53,13 @@ export async function GET(request: NextRequest) {
 // POST /api/monitoring/alerts - Create or update alert configuration
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -57,7 +67,7 @@ export async function POST(request: NextRequest) {
     const validatedData = AlertConfigSchema.parse(body);
 
     // Get existing alerts
-    const alertsData = await redis.get(`alerts:${session.user.id}`);
+    const alertsData = await redis.get(`alerts:${user.id}`);
     const alerts = alertsData ? JSON.parse(alertsData) : [];
 
     // Add or update alert
@@ -65,7 +75,7 @@ export async function POST(request: NextRequest) {
     const newAlert = {
       id: alertId,
       ...validatedData,
-      userId: session.user.id,
+      userId: user.id,
       createdAt: new Date().toISOString(),
     };
 
@@ -77,7 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Save updated alerts
-    await redis.setex(`alerts:${session.user.id}`, 86400 * 7, JSON.stringify(alerts)); // 7 days
+    await redis.setex(`alerts:${user.id}`, 86400 * 7, JSON.stringify(alerts)); // 7 days
 
     return NextResponse.json({
       success: true,
@@ -104,8 +114,13 @@ export async function POST(request: NextRequest) {
 // DELETE /api/monitoring/alerts - Delete alert configuration
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -120,7 +135,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Get existing alerts
-    const alertsData = await redis.get(`alerts:${session.user.id}`);
+    const alertsData = await redis.get(`alerts:${user.id}`);
     const alerts = alertsData ? JSON.parse(alertsData) : [];
 
     // Remove alert
@@ -134,7 +149,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Save updated alerts
-    await redis.setex(`alerts:${session.user.id}`, 86400 * 7, JSON.stringify(filteredAlerts));
+    await redis.setex(`alerts:${user.id}`, 86400 * 7, JSON.stringify(filteredAlerts));
 
     return NextResponse.json({
       success: true,
@@ -150,7 +165,7 @@ export async function DELETE(request: NextRequest) {
 }
 
 // Alert evaluation function (would be called by monitoring system)
-export async function evaluateAlerts(userId: string, metrics: any) {
+async function evaluateAlerts(userId: string, metrics: any) {
   try {
     const alertsData = await redis.get(`alerts:${userId}`);
     if (!alertsData) return;

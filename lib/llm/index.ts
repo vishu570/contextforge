@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { prisma } from '@/lib/db';
 import { decryptApiKey } from '@/lib/auth';
+import { getDefaultModel, getModelById } from '@/lib/models/config';
 
 export type LLMProvider = 'openai' | 'anthropic' | 'gemini';
 
@@ -123,7 +124,7 @@ Respond in JSON format with fields: type, confidence, reasoning`;
         case 'openai':
           if (!this.openai) throw new Error('OpenAI not configured');
           const openaiResponse = await this.openai.chat.completions.create({
-            model: config?.model || 'gpt-4-turbo-preview',
+            model: config?.model || process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
             messages: [{ role: 'user', content: enhancedPrompt }],
             temperature: config?.temperature || 0.3,
             max_tokens: config?.maxTokens || 800,
@@ -135,7 +136,7 @@ Respond in JSON format with fields: type, confidence, reasoning`;
         case 'anthropic':
           if (!this.anthropic) throw new Error('Anthropic not configured');
           const anthropicResponse = await this.anthropic.messages.create({
-            model: config?.model || 'claude-3-opus-20240229',
+            model: config?.model || process.env.ANTHROPIC_DEFAULT_MODEL || 'claude-sonnet-4-20250514',
             messages: [{ role: 'user', content: enhancedPrompt }],
             max_tokens: config?.maxTokens || 800,
             temperature: config?.temperature || 0.3,
@@ -208,7 +209,7 @@ Respond in JSON format with fields: optimizedContent, suggestions (array), confi
         case 'openai':
           if (!this.openai) throw new Error('OpenAI not configured');
           const openaiResponse = await this.openai.chat.completions.create({
-            model: config?.model || 'gpt-4-turbo-preview',
+            model: config?.model || process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
             messages: [{ role: 'user', content: prompt }],
             temperature: config?.temperature || 0.4,
             max_tokens: config?.maxTokens || 1500,
@@ -220,7 +221,7 @@ Respond in JSON format with fields: optimizedContent, suggestions (array), confi
         case 'anthropic':
           if (!this.anthropic) throw new Error('Anthropic not configured');
           const anthropicResponse = await this.anthropic.messages.create({
-            model: config?.model || 'claude-3-opus-20240229',
+            model: config?.model || process.env.ANTHROPIC_DEFAULT_MODEL || 'claude-sonnet-4-20250514',
             messages: [{ role: 'user', content: prompt }],
             max_tokens: config?.maxTokens || 1500,
             temperature: config?.temperature || 0.4,
@@ -287,7 +288,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case 'openai':
           if (!this.openai) throw new Error('OpenAI not configured');
           const openaiResponse = await this.openai.chat.completions.create({
-            model: config?.model || 'gpt-4-turbo-preview',
+            model: config?.model || process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
             messages: [{ role: 'user', content: prompt }],
             temperature: config?.temperature || 0.2,
             max_tokens: config?.maxTokens || 2000,
@@ -299,7 +300,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case 'anthropic':
           if (!this.anthropic) throw new Error('Anthropic not configured');
           const anthropicResponse = await this.anthropic.messages.create({
-            model: config?.model || 'claude-3-opus-20240229',
+            model: config?.model || process.env.ANTHROPIC_DEFAULT_MODEL || 'claude-sonnet-4-20250514',
             messages: [{ role: 'user', content: prompt }],
             max_tokens: config?.maxTokens || 2000,
             temperature: config?.temperature || 0.2,
@@ -478,7 +479,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case 'openai':
           if (!this.openai) throw new Error('OpenAI not configured');
           const openaiResponse = await this.openai.chat.completions.create({
-            model: options?.model || 'gpt-4o-mini',
+            model: options?.model || process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
             messages: [{ role: 'user', content: prompt }],
             temperature: options?.temperature || 0.3,
             max_tokens: options?.maxTokens || 1000,
@@ -489,7 +490,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case 'anthropic':
           if (!this.anthropic) throw new Error('Anthropic not configured');
           const anthropicResponse = await this.anthropic.messages.create({
-            model: options?.model || 'claude-3-haiku-20240307',
+            model: options?.model || 'claude-haiku-4-20250514',
             messages: [{ role: 'user', content: prompt }],
             max_tokens: options?.maxTokens || 1000,
             temperature: options?.temperature || 0.3,

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getModelConfigs, getDefaultModel } from '@/lib/models/config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +75,7 @@ export function QuickActionsPanel({
   selectedItems = [] 
 }: QuickActionsPanelProps) {
   const [isAssemblyDialogOpen, setIsAssemblyDialogOpen] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('claude-3.5-sonnet');
+  const [selectedModel, setSelectedModel] = useState(getDefaultModel().id);
 
   const quickActions: QuickAction[] = [
     {
@@ -139,7 +140,7 @@ export function QuickActionsPanel({
       id: '1',
       name: 'Full Stack Development',
       description: 'Complete context for web application development',
-      model: 'Claude-3.5-Sonnet',
+      model: getDefaultModel().name,
       itemCount: 12,
       estimatedTokens: 8500,
       category: 'Development',
@@ -149,7 +150,7 @@ export function QuickActionsPanel({
       id: '2',
       name: 'Code Review Assistant',
       description: 'Focused context for code analysis and review',
-      model: 'GPT-4-Turbo',
+      model: getModelConfigs()[1]?.name || 'GPT-5',
       itemCount: 8,
       estimatedTokens: 6200,
       category: 'Review',
@@ -159,7 +160,7 @@ export function QuickActionsPanel({
       id: '3',
       name: 'API Documentation',
       description: 'Context optimized for API documentation generation',
-      model: 'Claude-3.5-Sonnet',
+      model: getDefaultModel().name,
       itemCount: 6,
       estimatedTokens: 4100,
       category: 'Documentation',
@@ -169,7 +170,7 @@ export function QuickActionsPanel({
       id: '4',
       name: 'Data Analysis Pipeline',
       description: 'Python and R focused data science context',
-      model: 'GPT-4-Turbo',
+      model: getModelConfigs()[1]?.name || 'GPT-5',
       itemCount: 10,
       estimatedTokens: 7300,
       category: 'Data Science',
@@ -177,12 +178,7 @@ export function QuickActionsPanel({
     }
   ];
 
-  const models = [
-    { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', cost: 0.003 },
-    { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', cost: 0.01 },
-    { id: 'gpt-4o', name: 'GPT-4o', cost: 0.005 },
-    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', cost: 0.0035 }
-  ];
+  const models = getModelConfigs();
 
   const exportFormats = [
     { id: 'contextforge', name: 'ContextForge Bundle', icon: <FileText className="h-4 w-4" /> },

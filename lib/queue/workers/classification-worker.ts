@@ -129,7 +129,7 @@ Possible subTypes: system, user, assistant, instruction, example, validation, wo
 
     try {
       const response = await this.llmService.generateResponse(prompt, { 
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
         userId: validatedData.userId 
       });
       const classification = JSON.parse(response);

@@ -134,7 +134,7 @@ Guidelines:
 - Extract actual language from content`;
 
       const response = await this.llmService.generateResponse(prompt, {
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
         temperature: 0.3,
         maxTokens: 1000,
       });
@@ -194,7 +194,7 @@ Quality dimensions:
 Provide specific, actionable feedback and suggestions.`;
 
       const response = await this.llmService.generateResponse(prompt, {
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
         temperature: 0.4,
         maxTokens: 1200,
       });
@@ -255,7 +255,7 @@ Generate 5-15 relevant tags with high confidence scores (0.6+).
 Suggest 2-5 broad categories for folder organization.`;
 
       const response = await this.llmService.generateResponse(prompt, {
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
         temperature: 0.4,
         maxTokens: 800,
       });

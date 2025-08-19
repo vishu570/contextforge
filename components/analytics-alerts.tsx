@@ -294,6 +294,82 @@ export function AnalyticsAlerts({ userId, className }: AnalyticsAlertsProps) {
     return <IconComponent className="h-4 w-4" />;
   };
 
+  const AlertHistoryList = ({ userId, getSeverityIcon, getSeverityClass }: {
+    userId: string;
+    getSeverityIcon: (severity: string) => JSX.Element;
+    getSeverityClass: (severity: string) => string;
+  }) => {
+    const [alertHistory, setAlertHistory] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchAlertHistory = async () => {
+        try {
+          const response = await fetch('/api/analytics/alerts/history');
+          if (response.ok) {
+            const data = await response.json();
+            setAlertHistory(data.alerts || []);
+          }
+        } catch (error) {
+          console.error('Error fetching alert history:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchAlertHistory();
+    }, [userId]);
+
+    if (loading) {
+      return (
+        <div className="text-center py-8">
+          <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+          <p className="text-muted-foreground mt-2">Loading alert history...</p>
+        </div>
+      );
+    }
+
+    if (alertHistory.length === 0) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+          <p>No alert history available</p>
+          <p className="text-sm">Past alerts will appear here once they occur</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {alertHistory.map(alert => (
+          <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg">
+            <div className="flex items-center space-x-3">
+              {getSeverityIcon(alert.severity)}
+              <div>
+                <h4 className="font-medium">{alert.title}</h4>
+                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                  <span>Created: {new Date(alert.createdAt).toLocaleString()}</span>
+                  {alert.resolvedAt && (
+                    <span>Resolved: {new Date(alert.resolvedAt).toLocaleString()}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Badge variant={alert.status === 'resolved' ? 'default' : 'secondary'}>
+                {alert.status}
+              </Badge>
+              <Badge variant="outline" className={getSeverityClass(alert.severity)}>
+                {alert.severity}
+              </Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Header */}
@@ -619,51 +695,7 @@ export function AnalyticsAlerts({ userId, className }: AnalyticsAlertsProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {/* Mock alert history */}
-                {[
-                  {
-                    id: '1',
-                    title: 'High Error Rate',
-                    severity: 'high',
-                    status: 'resolved',
-                    createdAt: '2024-01-15T10:30:00Z',
-                    resolvedAt: '2024-01-15T10:45:00Z'
-                  },
-                  {
-                    id: '2',
-                    title: 'Response Time Spike',
-                    severity: 'medium',
-                    status: 'resolved',
-                    createdAt: '2024-01-14T14:20:00Z',
-                    resolvedAt: '2024-01-14T14:35:00Z'
-                  }
-                ].map(alert => (
-                  <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      {getSeverityIcon(alert.severity)}
-                      <div>
-                        <h4 className="font-medium">{alert.title}</h4>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <span>Created: {new Date(alert.createdAt).toLocaleString()}</span>
-                          {alert.resolvedAt && (
-                            <span>Resolved: {new Date(alert.resolvedAt).toLocaleString()}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={alert.status === 'resolved' ? 'default' : 'secondary'}>
-                        {alert.status}
-                      </Badge>
-                      <Badge variant="outline" className={getSeverityClass(alert.severity)}>
-                        {alert.severity}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <AlertHistoryList userId={userId} getSeverityIcon={getSeverityIcon} getSeverityClass={getSeverityClass} />
             </CardContent>
           </Card>
         </TabsContent>

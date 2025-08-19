@@ -276,7 +276,7 @@ Return only the similarity score as a decimal:`;
 
     try {
       const response = await this.llmService.generateResponse(prompt, { 
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-5-2025-08-07',
         maxTokens: 10,
         userId: item1.id, // This is a bit of a hack - we don't have userId in the items
       });

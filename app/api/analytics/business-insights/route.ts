@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { prisma } from '@/lib/db';
 
 // GET /api/analytics/business-insights - Get business insights and ROI data
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('range') || '30d';
-    const userId = session.user.id;
+    const userId = user.id;
     
     const timeRangeMs = parseTimeRange(timeRange);
     const startDate = new Date(Date.now() - timeRangeMs);

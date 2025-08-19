@@ -7,8 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Bot, FileCode, Webhook, Plus, TrendingUp, Clock, Archive } from 'lucide-react';
+import { FileText, Bot, FileCode, Webhook, Plus, TrendingUp, Clock, Archive, Brain, Zap, Activity } from 'lucide-react';
 import Link from 'next/link';
+import { SmartContextBoard } from '@/components/smart-context-board';
+import { WorkflowStream } from '@/components/workflow-stream';
+import { QuickActionsPanel } from '@/components/quick-actions-panel';
+import { VisualContextBuilder } from '@/components/visual-context-builder';
 
 async function getDashboardData(userId: string) {
   const [items, recentItems, collections, imports] = await Promise.all([
@@ -198,9 +202,10 @@ export default async function DashboardPage() {
                         {recentItems.slice(0, 3).map((item) => {
                           const Icon = typeIcons[item.type as keyof typeof typeIcons] || FileText;
                           return (
-                            <div
+                            <Link 
                               key={item.id}
-                              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-accent/50 transition-colors"
+                              href={`/dashboard/${item.type}s/${item.id}/edit`}
+                              className="flex items-center space-x-3 p-2 rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
                             >
                               <Icon className="h-4 w-4 text-muted-foreground" />
                               <div className="flex-1 min-w-0">
@@ -212,7 +217,7 @@ export default async function DashboardPage() {
                               <Badge variant="outline" className="text-xs">
                                 {item.type}
                               </Badge>
-                            </div>
+                            </Link>
                           );
                         })}
                       </div>

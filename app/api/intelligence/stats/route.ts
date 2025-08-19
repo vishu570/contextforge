@@ -1,24 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { EmbeddingService } from '@/lib/embeddings';
 import ContextAssemblyEngine from '@/lib/context/assembly';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const url = new URL(request.url);
     const days = parseInt(url.searchParams.get('days') || '30');
 
-    const embeddingService = new EmbeddingService(session.user.id);
-    const assemblyEngine = new ContextAssemblyEngine(session.user.id);
+    const embeddingService = new EmbeddingService(user.id);
+    const assemblyEngine = new ContextAssemblyEngine(user.id);
 
     // Get embedding statistics
-    const embeddingStats = await embeddingService.getEmbeddingStats(session.user.id);
+    const embeddingStats = await embeddingService.getEmbeddingStats(user.id);
 
     // Get assembly analytics
     const assemblyAnalytics = await assemblyEngine.getAssemblyAnalytics(days);
@@ -38,27 +43,27 @@ export async function GET(request: NextRequest) {
       avgReadability,
     ] = await Promise.all([
       prisma.item.count({
-        where: { userId: session.user.id },
+        where: { userId: user.id },
       }),
       prisma.itemEmbedding.count({
         where: {
-          item: { userId: session.user.id },
+          item: { userId: user.id },
         },
       }),
       prisma.contentSummary.count({
         where: {
-          item: { userId: session.user.id },
+          item: { userId: user.id },
         },
       }),
       prisma.contentSummary.count({
         where: {
-          item: { userId: session.user.id },
+          item: { userId: user.id },
           createdAt: { gte: cutoffDate },
         },
       }),
       prisma.contentSummary.aggregate({
         where: {
-          item: { userId: session.user.id },
+          item: { userId: user.id },
         },
         _avg: {
           readabilityScore: true,
@@ -67,7 +72,7 @@ export async function GET(request: NextRequest) {
       prisma.contentSummary.groupBy({
         by: ['complexity'],
         where: {
-          item: { userId: session.user.id },
+          item: { userId: user.id },
         },
         _count: true,
       }),
@@ -81,7 +86,7 @@ export async function GET(request: NextRequest) {
     // Get recent semantic searches
     const recentSearches = await prisma.semanticSearch.findMany({
       where: {
-        userId: session.user.id,
+        userId: user.id,
         createdAt: { gte: cutoffDate },
       },
       take: 10,

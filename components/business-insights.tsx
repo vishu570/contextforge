@@ -147,17 +147,8 @@ export function BusinessInsights({
   const chartData = useMemo(() => {
     if (!data) return {};
 
-    // ROI progression over time (mock data)
-    const roiProgression = Array.from({ length: 12 }, (_, i) => {
-      const month = new Date();
-      month.setMonth(month.getMonth() - (11 - i));
-      return {
-        month: month.toLocaleDateString('en-US', { month: 'short' }),
-        roi: Math.max(0, (data.roi.roiPercentage * (i + 1)) / 12 + (Math.random() - 0.5) * 20),
-        costSavings: Math.max(0, (data.roi.costSavings * (i + 1)) / 12 + (Math.random() - 0.5) * data.roi.costSavings * 0.2),
-        productivity: Math.max(0, (data.productivity.productivityScore * (i + 1)) / 12 + (Math.random() - 0.5) * 10)
-      };
-    });
+    // Use actual ROI progression data from API if available
+    const roiProgression = data.roiProgression || [];
 
     // Efficiency metrics comparison
     const efficiencyComparison = [

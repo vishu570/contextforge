@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { prisma } from '@/lib/db';
 
 // GET /api/analytics/export - Export analytics data
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -16,7 +20,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || 'summary';
     const timeRange = searchParams.get('range') || '30d';
 
-    const userId = session.user.id;
+    const userId = user.id;
     const timeRangeMs = parseTimeRange(timeRange);
     const startDate = new Date(Date.now() - timeRangeMs);
 

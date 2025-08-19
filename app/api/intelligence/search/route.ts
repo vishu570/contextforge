@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { EmbeddingService } from '@/lib/embeddings';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,11 +31,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const embeddingService = new EmbeddingService(session.user.id);
+    const embeddingService = new EmbeddingService(user.id);
     
     const searchResults = await embeddingService.semanticSearch(
       query,
-      session.user.id,
+      user.id,
       {
         limit,
         threshold,
@@ -45,7 +50,7 @@ export async function POST(request: NextRequest) {
     const items = await prisma.item.findMany({
       where: {
         id: { in: itemIds },
-        userId: session.user.id,
+        userId: user.id,
       },
       select: {
         id: true,

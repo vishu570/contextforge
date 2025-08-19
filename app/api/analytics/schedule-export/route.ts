@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { prisma } from '@/lib/db';
 
 // POST /api/analytics/schedule-export - Schedule automated export
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -52,9 +56,13 @@ export async function POST(request: NextRequest) {
 // GET /api/analytics/schedule-export - Get scheduled exports
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const scheduledExports = await prisma.scheduledExport.findMany({
@@ -85,9 +93,13 @@ export async function GET(request: NextRequest) {
 // PUT /api/analytics/schedule-export - Update scheduled export
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -125,9 +137,13 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/analytics/schedule-export - Delete scheduled export
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);

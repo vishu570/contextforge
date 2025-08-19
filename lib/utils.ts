@@ -14,7 +14,7 @@ export function encryptApiKey(apiKey: string): string {
   try {
     const iv = crypto.randomBytes(16)
     const key = crypto.scryptSync(ENCRYPTION_KEY, "salt", 32)
-    const cipher = crypto.createCipher(ALGORITHM, key)
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
     
     let encrypted = cipher.update(apiKey, "utf8", "hex")
     encrypted += cipher.final("hex")
@@ -37,7 +37,7 @@ export function decryptApiKey(encryptedApiKey: string): string {
     const encrypted = parts[1]
     
     const key = crypto.scryptSync(ENCRYPTION_KEY, "salt", 32)
-    const decipher = crypto.createDecipher(ALGORITHM, key)
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv)
     
     let decrypted = decipher.update(encrypted, "hex", "utf8")
     decrypted += decipher.final("utf8")

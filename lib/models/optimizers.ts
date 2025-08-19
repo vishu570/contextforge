@@ -53,7 +53,7 @@ export interface OptimizationResult {
 export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   'openai-gpt4': {
     provider: 'openai',
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-5-2025-08-07',
     maxTokens: 4096,
     inputCostPer1k: 0.01,
     outputCostPer1k: 0.03,
@@ -83,7 +83,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   },
   'openai-gpt4o-mini': {
     provider: 'openai',
-    model: 'gpt-4o-mini',
+    model: 'gpt-5-2025-08-07-mini',
     maxTokens: 16384,
     inputCostPer1k: 0.00015,
     outputCostPer1k: 0.0006,
@@ -98,7 +98,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   },
   'anthropic-claude3-opus': {
     provider: 'anthropic',
-    model: 'claude-3-opus-20240229',
+    model: 'claude-opus-4-20250514',
     maxTokens: 4096,
     inputCostPer1k: 0.015,
     outputCostPer1k: 0.075,
@@ -112,7 +112,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   },
   'anthropic-claude3-sonnet': {
     provider: 'anthropic',
-    model: 'claude-3-sonnet-20240229',
+    model: 'claude-sonnet-4-20250514',
     maxTokens: 4096,
     inputCostPer1k: 0.003,
     outputCostPer1k: 0.015,
@@ -126,7 +126,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   },
   'anthropic-claude3-haiku': {
     provider: 'anthropic',
-    model: 'claude-3-haiku-20240307',
+    model: 'claude-haiku-4-20250514',
     maxTokens: 4096,
     inputCostPer1k: 0.00025,
     outputCostPer1k: 0.00125,
@@ -438,7 +438,7 @@ ${content}
 Provide the trimmed version that maintains quality while reducing token count:`;
 
       const trimmedContent = await this.llmService.generateResponse(prompt, {
-        model: 'gpt-4o-mini', // Use a cost-effective model for optimization
+        model: 'gpt-5-2025-08-07-mini', // Use a cost-effective model for optimization
         maxTokens: Math.min(maxTokens, 4000),
         temperature: 0.3,
       });

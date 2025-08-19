@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
+
 import { prisma } from '@/lib/db';
 
 // GET /api/analytics/content-intelligence - Get content intelligence analytics
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const timeRange = searchParams.get('range') || '30d';
-    const userId = session.user.id;
+    const userId = user.id;
     
     const timeRangeMs = parseTimeRange(timeRange);
     const startDate = new Date(Date.now() - timeRangeMs);
@@ -106,8 +110,9 @@ async function getQualityMetrics(userId: string, startDate: Date) {
     const avgRelevance = (qualityData._avg.confidence || 0) * 10;
     const avgCompleteness = avgReadability * 0.95;
 
-    // Calculate quality trend (simplified - compare with previous period)
-    const qualityTrend = Math.random() * 10 - 2; // Mock trend data
+    // Calculate quality trend by comparing with previous period
+    // TODO: Implement actual quality trend calculation from historical data  
+    const qualityTrend = 0; // Placeholder - should be calculated from real data
 
     return {
       avgReadability,
@@ -269,16 +274,9 @@ async function getDuplicateAnalysis(userId: string, startDate: Date) {
     const estimatedCostPerToken = 0.0001; // Simplified cost estimate
     const deduplicationSavings = duplicateItems * estimatedTokensPerDuplicate * estimatedCostPerToken;
 
-    // Mock duplicate clusters (in a real implementation, these would come from semantic analysis)
-    const duplicateClusters = Array.from({ length: Math.min(5, Math.floor(duplicateItems / 2)) }, (_, i) => ({
-      id: `cluster_${i}`,
-      size: Math.floor(Math.random() * 5) + 2,
-      similarity: 0.8 + Math.random() * 0.19,
-      examples: [
-        `Example duplicate content ${i * 2 + 1}`,
-        `Example duplicate content ${i * 2 + 2}`
-      ]
-    }));
+    // Get actual duplicate clusters from the database
+    // TODO: Implement semantic clustering analysis for real duplicate detection
+    const duplicateClusters: any[] = []; // Should be populated with real cluster analysis
 
     return {
       totalItems,

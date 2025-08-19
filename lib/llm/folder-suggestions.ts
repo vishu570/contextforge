@@ -261,7 +261,7 @@ async function callLLM(prompt: string): Promise<string> {
       });
       
       const response = await anthropic.messages.create({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-haiku-4-20250514',
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }]
       });

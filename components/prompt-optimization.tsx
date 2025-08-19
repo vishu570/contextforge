@@ -174,11 +174,11 @@ const SUGGESTION_TYPES = [
 ];
 
 const AI_MODELS = [
-  { value: 'gpt-4', label: 'GPT-4', provider: 'OpenAI' },
-  { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo', provider: 'OpenAI' },
-  { value: 'claude-3-opus', label: 'Claude 3 Opus', provider: 'Anthropic' },
-  { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet', provider: 'Anthropic' },
-  { value: 'gemini-pro', label: 'Gemini Pro', provider: 'Google' },
+  { value: 'gpt-5-2025-08-07', label: 'GPT-5', provider: 'OpenAI' },
+  { value: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
+  { value: 'claude-sonnet-4-20250514', label: 'Claude 4 Sonnet', provider: 'Anthropic' },
+  { value: 'claude-haiku-4-20250514', label: 'Claude 4 Haiku', provider: 'Anthropic' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'Google' },
 ];
 
 export function PromptOptimization({
@@ -205,7 +205,7 @@ export function PromptOptimization({
   const form = useForm<OptimizationConfigData>({
     resolver: zodResolver(optimizationConfigSchema),
     defaultValues: {
-      targetModel: 'gpt-4',
+      targetModel: 'gpt-5-2025-08-07',
       optimizationGoals: ['quality'],
       priorityLevel: 'medium',
       constraints: {
