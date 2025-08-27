@@ -1,6 +1,7 @@
 import matter from 'gray-matter';
 import yaml from 'yaml';
 import xml2js from 'xml2js';
+import Papa from 'papaparse';
 
 export interface ParsedItem {
   name: string;
@@ -66,6 +67,10 @@ export async function parseFile(
       
       case 'af':
         items.push(...await parseAgentFile(filename, content));
+        break;
+      
+      case 'csv':
+        items.push(...await parseCsv(filename, content));
         break;
       
       default:
@@ -365,4 +370,306 @@ function detectTypeFromMetadata(metadata: Record<string, any>): ParsedItem['type
   }
   
   return null;
+}
+
+// CSV Parser for bulk imports
+async function parseCsv(filename: string, content: string): Promise<ParsedItem[]> {
+  const items: ParsedItem[] = [];
+  
+  try {
+    const parsed = Papa.parse(content, {
+      header: true,
+      skipEmptyLines: true,
+      transform: (value: string) => value.trim(),
+    });
+
+    if (parsed.errors.length > 0) {
+      console.warn('CSV parsing warnings:', parsed.errors);
+    }
+
+    parsed.data.forEach((row: any, index: number) => {
+      try {
+        // Smart field mapping for common CSV formats
+        const mappedData = smartMapCsvFields(row);
+        
+        if (!mappedData.content && !mappedData.name) {
+          console.warn(`Skipping empty row ${index + 1} in ${filename}`);
+          return;
+        }
+
+        const item: ParsedItem = {
+          name: mappedData.name || `${filename}_row_${index + 1}`,
+          content: mappedData.content || JSON.stringify(row),
+          type: mappedData.type || detectTypeFromContent(mappedData.content || ''),
+          format: 'csv',
+          metadata: {
+            ...mappedData.metadata,
+            csvRow: index + 1,
+            originalRow: row,
+          },
+          author: mappedData.author,
+          language: mappedData.language,
+          targetModels: mappedData.targetModels,
+        };
+
+        items.push(item);
+      } catch (error) {
+        console.error(`Error processing CSV row ${index + 1}:`, error);
+        // Add as raw data for manual review
+        items.push({
+          name: `${filename}_error_row_${index + 1}`,
+          content: JSON.stringify(row),
+          type: 'other',
+          format: 'csv',
+          metadata: {
+            parseError: true,
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            csvRow: index + 1,
+          },
+        });
+      }
+    });
+  } catch (error) {
+    console.error(`Error parsing CSV file ${filename}:`, error);
+    throw error;
+  }
+
+  return items;
+}
+
+// Smart CSV field mapping
+function smartMapCsvFields(row: Record<string, any>): {
+  name?: string;
+  content?: string;
+  type?: ParsedItem['type'];
+  author?: string;
+  language?: string;
+  targetModels?: string;
+  metadata: Record<string, any>;
+} {
+  const keys = Object.keys(row).map(k => k.toLowerCase());
+  const result: any = { metadata: {} };
+
+  // Common field mappings
+  const fieldMappings = {
+    name: ['name', 'title', 'prompt_name', 'agent_name', 'rule_name', 'identifier'],
+    content: ['content', 'text', 'prompt', 'body', 'description', 'rule', 'agent_content'],
+    type: ['type', 'category', 'kind', 'classification'],
+    author: ['author', 'creator', 'owner', 'by'],
+    language: ['language', 'lang', 'programming_language'],
+    targetModels: ['models', 'target_models', 'ai_models', 'compatible_models'],
+  };
+
+  // Map fields based on common patterns
+  for (const [targetField, possibleKeys] of Object.entries(fieldMappings)) {
+    for (const key of possibleKeys) {
+      const matchingKey = keys.find(k => k.includes(key));
+      if (matchingKey && row[matchingKey]) {
+        result[targetField] = row[matchingKey];
+        break;
+      }
+    }
+  }
+
+  // Store unmapped fields as metadata
+  for (const [key, value] of Object.entries(row)) {
+    const isUsed = Object.values(result).includes(value);
+    if (!isUsed && value !== null && value !== undefined && value !== '') {
+      result.metadata[key] = value;
+    }
+  }
+
+  return result;
+}
+
+// Enhanced type detection with machine learning patterns
+export function detectTypeFromContentAdvanced(content: string, metadata?: Record<string, any>): {
+  type: ParsedItem['type'];
+  confidence: number;
+  reasons: string[];
+} {
+  const lowerContent = content.toLowerCase();
+  const reasons: string[] = [];
+  let type: ParsedItem['type'] = 'other';
+  let confidence = 0;
+
+  // Enhanced pattern matching with confidence scoring
+  const patterns = [
+    {
+      type: 'prompt' as const,
+      patterns: [
+        /you are|act as|your role|system:|user:|assistant:/i,
+        /instruction|prompt|request|query/i,
+        /please|help|explain|generate|create/i,
+      ],
+      weight: 0.8,
+    },
+    {
+      type: 'agent' as const,
+      patterns: [
+        /agent|assistant|bot|ai model/i,
+        /personality|behavior|capabilities/i,
+        /interact|respond|engage/i,
+      ],
+      weight: 0.7,
+    },
+    {
+      type: 'rule' as const,
+      patterns: [
+        /rule|policy|guideline|constraint/i,
+        /must|should|required|forbidden/i,
+        /eslint|lint|format|glob/i,
+      ],
+      weight: 0.6,
+    },
+    {
+      type: 'template' as const,
+      patterns: [
+        /template|boilerplate|scaffold/i,
+        /\{\{|\$\{|<%|%>/,
+        /placeholder|variable|parameter/i,
+      ],
+      weight: 0.5,
+    },
+    {
+      type: 'snippet' as const,
+      patterns: [
+        /function|const|var|let|def|class/i,
+        /import|export|require|module/i,
+        /\(.*\)|\{.*\}|\[.*\]/,
+      ],
+      weight: 0.4,
+    },
+  ];
+
+  // Check metadata hints
+  if (metadata) {
+    const metadataType = detectTypeFromMetadata(metadata);
+    if (metadataType) {
+      type = metadataType;
+      confidence += 0.3;
+      reasons.push('Detected from metadata');
+    }
+  }
+
+  // Pattern matching with confidence calculation
+  let maxScore = 0;
+  let detectedType: ParsedItem['type'] = 'other';
+  
+  for (const pattern of patterns) {
+    let score = 0;
+    const matchedPatterns: string[] = [];
+    
+    for (const regex of pattern.patterns) {
+      if (regex.test(content)) {
+        score += pattern.weight / pattern.patterns.length;
+        matchedPatterns.push(regex.toString());
+      }
+    }
+    
+    if (score > maxScore) {
+      maxScore = score;
+      detectedType = pattern.type;
+      if (matchedPatterns.length > 0) {
+        reasons.push(`Matched ${pattern.type} patterns: ${matchedPatterns.length}`);
+      }
+    }
+  }
+
+  if (maxScore > confidence) {
+    type = detectedType;
+    confidence = Math.min(maxScore + confidence, 1);
+  }
+
+  return { type, confidence, reasons };
+}
+
+// Smart duplicate detection
+export function calculateContentSimilarity(content1: string, content2: string): {
+  similarity: number;
+  method: string;
+  details: Record<string, any>;
+} {
+  // Normalize content
+  const normalize = (text: string) => {
+    return text
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s]/g, '')
+      .trim();
+  };
+
+  const norm1 = normalize(content1);
+  const norm2 = normalize(content2);
+
+  // Exact match
+  if (norm1 === norm2) {
+    return { similarity: 1.0, method: 'exact', details: { length: norm1.length } };
+  }
+
+  // Levenshtein distance for short content
+  if (norm1.length < 500 && norm2.length < 500) {
+    const distance = levenshteinDistance(norm1, norm2);
+    const maxLen = Math.max(norm1.length, norm2.length);
+    const similarity = 1 - (distance / maxLen);
+    return { 
+      similarity, 
+      method: 'levenshtein', 
+      details: { distance, maxLength: maxLen } 
+    };
+  }
+
+  // Jaccard similarity for longer content
+  const words1 = new Set(norm1.split(' ').filter(w => w.length > 2));
+  const words2 = new Set(norm2.split(' ').filter(w => w.length > 2));
+  
+  const intersection = new Set([...words1].filter(x => words2.has(x)));
+  const union = new Set([...words1, ...words2]);
+  
+  const similarity = union.size > 0 ? intersection.size / union.size : 0;
+  
+  return {
+    similarity,
+    method: 'jaccard',
+    details: {
+      intersection: intersection.size,
+      union: union.size,
+      words1: words1.size,
+      words2: words2.size,
+    },
+  };
+}
+
+// Levenshtein distance implementation
+function levenshteinDistance(str1: string, str2: string): number {
+  const matrix = [];
+  const n = str1.length;
+  const m = str2.length;
+
+  if (n === 0) return m;
+  if (m === 0) return n;
+
+  for (let i = 0; i <= m; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= n; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+
+  return matrix[m][n];
 }

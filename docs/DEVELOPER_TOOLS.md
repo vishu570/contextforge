@@ -8,10 +8,10 @@ Welcome to the ContextForge Developer Tools suite! This comprehensive toolkit en
 
 ```bash
 # Install globally
-npm install -g @contextforge/cli
+pnpm add -g @contextforge/cli
 
 # Or use with npx
-npx @contextforge/cli@latest --help
+pnpm dlx @contextforge/cli@latest --help
 
 # Verify installation
 contextforge --version
@@ -347,7 +347,7 @@ POST /api/intelligence/optimization
 
 Language-specific SDKs are available:
 
-- **JavaScript/TypeScript**: `npm install @contextforge/sdk`
+- **JavaScript/TypeScript**: `pnpm add @contextforge/sdk`
 - **Python**: `pip install contextforge-sdk`
 - **Go**: `go get github.com/contextforge/go-sdk`
 
@@ -521,16 +521,16 @@ git clone https://github.com/contextforge/contextforge-app.git
 cd contextforge-app
 
 # Install dependencies
-npm install
+pnpm install
 
 # Start development
-npm run dev
+pnpm dev
 
 # Run tests
-npm test
+pnpm test
 
 # Build CLI
-cd cli && npm run build
+cd cli && pnpm build
 ```
 
 ### Adding New Commands

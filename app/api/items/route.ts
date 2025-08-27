@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('Received body:', JSON.stringify(body, null, 2));
     const validatedData = createItemSchema.parse(body);
 
     // Create the item
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
         type: validatedData.type,
         content: validatedData.content,
         format: validatedData.format || 'text',
-        metadata: validatedData.metadata || {},
+        metadata: JSON.stringify(validatedData.metadata || {}),
         author: validatedData.author || user.name || user.email,
         language: validatedData.language || 'en',
         targetModels: validatedData.targetModels,
@@ -145,12 +146,6 @@ export async function POST(request: NextRequest) {
         tags: {
           include: {
             tag: true,
-          },
-        },
-        folder: {
-          select: {
-            id: true,
-            name: true,
           },
         },
       },
@@ -217,7 +212,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       ...item,
       tags: [],
-      collections: item.collections.map(collectionRelation => collectionRelation.collection),
+      collections: [],
     }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

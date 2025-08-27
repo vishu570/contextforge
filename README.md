@@ -1,36 +1,87 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## ContextForge App
 
-## Getting Started
+A Next.js application for AI-powered context management.
 
-First, run the development server:
+### Requirements
+- Node.js 18+ (use `corepack` for package manager)
+- pnpm (managed via corepack)
+- SQLite (bundled) or Postgres/Redis when using docker-compose
 
+### Install
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+corepack enable
+corepack prepare pnpm@10.15.0 --activate
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Development
+```bash
+pnpm dev
+# or run app and local server concurrently
+pnpm server:dev
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build and Start
+```bash
+pnpm build
+pnpm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prisma
+```bash
+# Generate client
+pnpm prisma generate
 
-## Learn More
+# Apply schema to dev DB (SQLite by default)
+pnpm prisma db push
 
-To learn more about Next.js, take a look at the following resources:
+# Reset dev DB (destructive)
+pnpm prisma db push --force-reset
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Inspect DB
+pnpm prisma studio
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Testing
+```bash
+pnpm test
+```
 
-## Deploy on Vercel
+### Linting and Type Check
+```bash
+pnpm lint
+pnpm tsc --noEmit
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Docker
+- Build optimized production image:
+```bash
+docker build -t contextforge-app .
+```
+- Run:
+```bash
+docker run -p 3000:3000 --name contextforge contextforge-app
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Docker Compose (dev stack)
+```bash
+docker compose -f docker-compose.dev.yml up --build
+```
+
+### Monorepo
+This repo uses a pnpm workspace with:
+- Root app (`.`)
+- CLI package (`cli`)
+
+Workspace file: `pnpm-workspace.yaml`.
+
+### Scripts
+- `dev`: Next.js dev
+- `build`: Next.js build
+- `start`: Next.js start
+- `server:start`: start local server scripts
+- `server:dev`: run `dev` and `server:start` concurrently
+
+### Notes
+- Package manager is pinned via `packageManager` in `package.json` and handled by corepack.
+- Prefer `pnpm` commands over `npm`/`yarn`.

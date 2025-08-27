@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { FileText, Bot, FileCode, Webhook, Edit, Trash2 } from 'lucide-react';
+import { FileText, Bot, FileCode, Webhook, Edit, Trash2, Copy } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -98,6 +98,19 @@ export function ItemCard({ item }: ItemCardProps) {
               <CardTitle className="text-lg truncate">{item.name}</CardTitle>
             </div>
             <div className="flex space-x-1">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText(item.content);
+                  toast({
+                    title: 'Copied!',
+                    description: `${item.type} content copied to clipboard`,
+                  });
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" asChild>
                 <Link href={`/dashboard/${item.type}s/${item.id}/edit`}>
                   <Edit className="h-4 w-4" />

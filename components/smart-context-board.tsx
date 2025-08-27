@@ -138,7 +138,7 @@ export function SmartContextBoard({ userId }: SmartContextBoardProps) {
         id: type,
         name: getContextName(type),
         items: typeItems.slice(0, 5), // Show top 5 items
-        model: defaultModel.name,
+        model: 'AI Model',
         totalTokens,
         estimatedCost,
         lastActivity: getMostRecentActivity(typeItems)
@@ -392,7 +392,7 @@ export function SmartContextBoard({ userId }: SmartContextBoardProps) {
                       ))}
                       {context.items.length > 3 && (
                         <button 
-                          onClick={() => router.push(`/dashboard/${context.id}`)}
+                          onClick={() => router.push(`/dashboard/${context.id}s`)}
                           className="text-xs text-muted-foreground text-center w-full hover:text-primary transition-colors"
                         >
                           +{context.items.length - 3} more items (click to view all)

@@ -13,8 +13,8 @@
     "start": "node dist/bin/contextforge.js",
     "test": "jest",
     "lint": "eslint src/**/*.ts",
-    "prepare": "npm run build",
-    "publish-cli": "npm run build && npm publish --access public"
+    "prepublishOnly": "pnpm build",
+    "publish-cli": "pnpm build && pnpm publish --access public"
   },
   "keywords": [
     "contextforge",

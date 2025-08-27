@@ -57,6 +57,7 @@ The system extends the existing schema with:
 **What it does**: Generates vector embeddings for content to enable semantic similarity search.
 
 **How to use**:
+
 ```bash
 # Generate embeddings for an item
 POST /api/intelligence/embeddings
@@ -76,6 +77,7 @@ POST /api/intelligence/search
 ```
 
 **Benefits**:
+
 - Find content by meaning, not just keywords
 - Discover related items automatically
 - Enable intelligent content recommendations
@@ -85,6 +87,7 @@ POST /api/intelligence/search
 **What it does**: AI-powered analysis providing summaries, quality scores, and automatic tags.
 
 **How to use**:
+
 ```bash
 # Analyze content
 POST /api/intelligence/analysis
@@ -95,6 +98,7 @@ POST /api/intelligence/analysis
 ```
 
 **Provides**:
+
 - AI-generated summaries
 - Quality assessment with specific feedback
 - Automatic tag generation
@@ -106,6 +110,7 @@ POST /api/intelligence/analysis
 **What it does**: Groups similar content using machine learning algorithms.
 
 **How to use**:
+
 ```bash
 # Run clustering analysis
 POST /api/intelligence/clustering
@@ -117,6 +122,7 @@ POST /api/intelligence/clustering
 ```
 
 **Algorithms supported**:
+
 - K-Means clustering
 - Hierarchical clustering
 - DBSCAN density-based clustering
@@ -126,6 +132,7 @@ POST /api/intelligence/clustering
 **What it does**: Optimizes content for specific AI models to reduce tokens and costs.
 
 **How to use**:
+
 ```bash
 # Optimize content
 POST /api/intelligence/optimization
@@ -138,6 +145,7 @@ POST /api/intelligence/optimization
 ```
 
 **Optimization strategies**:
+
 - Whitespace and formatting cleanup
 - Pattern compression
 - Model-specific formatting
@@ -148,6 +156,7 @@ POST /api/intelligence/optimization
 **What it does**: Intelligently assembles context based on user intent using multiple strategies.
 
 **How to use**:
+
 ```bash
 # Assemble context
 POST /api/intelligence/assembly
@@ -160,6 +169,7 @@ POST /api/intelligence/assembly
 ```
 
 **Assembly strategies**:
+
 - **Automatic**: AI-driven selection using multiple signals
 - **Semantic**: Vector similarity-based selection
 - **Manual**: User-specified items
@@ -184,13 +194,13 @@ GOOGLE_AI_KEY=your_google_key
 
 The system supports multiple AI models with different cost and performance characteristics:
 
-| Model | Provider | Input Cost/1K | Output Cost/1K | Context Window |
-|-------|----------|---------------|----------------|----------------|
-| GPT-4o Mini | OpenAI | $0.00015 | $0.0006 | 128K |
-| GPT-4o | OpenAI | $0.005 | $0.015 | 128K |
-| Claude 3 Haiku | Anthropic | $0.00025 | $0.00125 | 200K |
-| Claude 3 Sonnet | Anthropic | $0.003 | $0.015 | 200K |
-| Gemini Pro | Google | $0.0005 | $0.0015 | 30K |
+| Model           | Provider  | Input Cost/1K | Output Cost/1K | Context Window |
+| --------------- | --------- | ------------- | -------------- | -------------- |
+| GPT-4o Mini     | OpenAI    | $0.00015      | $0.0006        | 128K           |
+| GPT-4o          | OpenAI    | $0.005        | $0.015         | 128K           |
+| Claude 3 Haiku  | Anthropic | $0.00025      | $0.00125       | 200K           |
+| Claude 3 Sonnet | Anthropic | $0.003        | $0.015         | 200K           |
+| Gemini Pro      | Google    | $0.0005       | $0.0015        | 30K            |
 
 ## 📊 Monitoring and Analytics
 
@@ -285,7 +295,7 @@ GET /api/intelligence/cost-estimates?content=...&maxCost=0.01&prioritizeQuality=
 The Intelligence Coordinator can process items through complete pipelines:
 
 ```javascript
-const coordinator = new IntelligenceCoordinator(userId);
+const coordinator = new IntelligenceCoordinator(userId)
 
 // Process a single item through the full pipeline
 const result = await coordinator.processItem(itemId, {
@@ -293,18 +303,18 @@ const result = await coordinator.processItem(itemId, {
   includeAnalysis: true,
   includeClustering: true,
   includeOptimization: true,
-  targetModels: ['openai-gpt4o-mini', 'anthropic-claude3-haiku']
-});
+  targetModels: ["openai-gpt4o-mini", "anthropic-claude3-haiku"],
+})
 
 // Smart context assembly with automatic optimization
 const smartResult = await coordinator.smartAssembly(
   "Create a comprehensive guide for API development",
   {
     autoOptimize: true,
-    targetModel: 'openai-gpt4o-mini',
-    maxTokens: 4000
+    targetModel: "openai-gpt4o-mini",
+    maxTokens: 4000,
   }
-);
+)
 ```
 
 ## 🛠️ Development and Extension
@@ -365,19 +375,19 @@ The system includes comprehensive error handling:
 
 ### Complete Endpoint List
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/intelligence/overview` | GET/POST | System overview and quick actions |
-| `/api/intelligence/embeddings` | POST/GET/DELETE | Embedding management |
-| `/api/intelligence/search` | POST | Semantic search |
-| `/api/intelligence/clustering` | POST/GET | Content clustering |
-| `/api/intelligence/analysis` | POST/GET | Content analysis |
-| `/api/intelligence/optimization` | POST/GET | Model optimization |
-| `/api/intelligence/assembly` | POST/GET | Context assembly |
-| `/api/intelligence/templates` | POST/GET/PUT/DELETE | Template management |
-| `/api/intelligence/cost-estimates` | POST/GET | Cost analysis |
-| `/api/intelligence/batch` | POST/GET | Batch operations |
-| `/api/intelligence/stats` | GET | Analytics and statistics |
+| Endpoint                           | Method              | Purpose                           |
+| ---------------------------------- | ------------------- | --------------------------------- |
+| `/api/intelligence/overview`       | GET/POST            | System overview and quick actions |
+| `/api/intelligence/embeddings`     | POST/GET/DELETE     | Embedding management              |
+| `/api/intelligence/search`         | POST                | Semantic search                   |
+| `/api/intelligence/clustering`     | POST/GET            | Content clustering                |
+| `/api/intelligence/analysis`       | POST/GET            | Content analysis                  |
+| `/api/intelligence/optimization`   | POST/GET            | Model optimization                |
+| `/api/intelligence/assembly`       | POST/GET            | Context assembly                  |
+| `/api/intelligence/templates`      | POST/GET/PUT/DELETE | Template management               |
+| `/api/intelligence/cost-estimates` | POST/GET            | Cost analysis                     |
+| `/api/intelligence/batch`          | POST/GET            | Batch operations                  |
+| `/api/intelligence/stats`          | GET                 | Analytics and statistics          |
 
 ## 🎯 Use Cases
 
@@ -433,7 +443,7 @@ See the `/examples` directory for complete implementation examples and use cases
 Enable detailed logging:
 
 ```bash
-DEBUG=contextforge:intelligence npm run dev
+DEBUG=contextforge:intelligence pnpm dev
 ```
 
 ### Health Checks

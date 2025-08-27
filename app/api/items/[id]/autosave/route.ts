@@ -1,203 +1,193 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getUserFromToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { z } from 'zod';
 
 const autosaveSchema = z.object({
   content: z.string(),
-  metadata: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.any()).optional(),
+  version: z.number().optional(),
+  lastModified: z.string().optional()
 });
 
+// Auto-save functionality for draft protection
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await getUserFromToken(token);
+    const user = await getUserFromToken(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = params;
     const body = await request.json();
     const validatedData = autosaveSchema.parse(body);
 
-    // Check if item exists and belongs to user
+    // Get existing item to verify ownership
     const existingItem = await prisma.item.findFirst({
       where: {
-        id,
-        userId: user.id,
-      },
+        id: id,
+        userId: user.id
+      }
     });
 
     if (!existingItem) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    // Create or update draft
-    const draftKey = `draft_${id}_${user.id}`;
-    const draftData = {
+    // Create or update autosave record
+    const autosaveData = {
+      itemId: id,
+      userId: user.id,
       content: validatedData.content,
       metadata: validatedData.metadata || {},
-      lastSaved: new Date().toISOString(),
-      originalItemId: id,
+      version: validatedData.version || 1,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
-    // Store draft in user settings (simple approach)
-    const userSettings = JSON.parse(existingItem.metadata || '{}');
-    userSettings.drafts = userSettings.drafts || {};
-    userSettings.drafts[draftKey] = draftData;
-
-    // We'll store drafts in a simple way for now - in practice, you might want a separate drafts table
-    // For this implementation, we'll create a temporary item with a special flag
-    const existingDraft = await prisma.item.findFirst({
-      where: {
-        userId: user.id,
+    // In a real implementation, this would use a separate autosave table
+    // For now, we'll store it as metadata on the item
+    const updatedItem = await prisma.item.update({
+      where: { id },
+      data: {
         metadata: {
-          contains: `"isDraft":true,"originalItemId":"${id}"`,
+          ...existingItem.metadata,
+          autosave: {
+            content: validatedData.content,
+            savedAt: new Date().toISOString(),
+            version: validatedData.version || 1
+          }
         },
-      },
+        updatedAt: new Date()
+      }
     });
 
-    const draftMetadata = {
-      isDraft: true,
-      originalItemId: id,
-      lastAutoSaved: new Date().toISOString(),
-      ...validatedData.metadata,
-    };
-
-    if (existingDraft) {
-      // Update existing draft
-      await prisma.item.update({
-        where: { id: existingDraft.id },
-        data: {
-          content: validatedData.content,
-          metadata: JSON.stringify(draftMetadata),
-          updatedAt: new Date(),
-        },
-      });
-    } else {
-      // Create new draft
-      await prisma.item.create({
-        data: {
-          userId: user.id,
-          type: existingItem.type,
-          subType: existingItem.subType,
-          name: `${existingItem.name} (Draft)`,
-          content: validatedData.content,
-          format: existingItem.format,
-          metadata: JSON.stringify(draftMetadata),
-          author: existingItem.author,
-          language: existingItem.language,
-          targetModels: existingItem.targetModels,
-        },
-      });
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      timestamp: new Date().toISOString(),
-      message: 'Draft saved successfully',
+    return NextResponse.json({
+      success: true,
+      autosaveId: `autosave_${id}_${Date.now()}`,
+      savedAt: new Date().toISOString(),
+      version: validatedData.version || 1,
+      message: 'Draft saved successfully'
     });
+
   } catch (error) {
-    console.error('Error saving draft:', error);
+    console.error('Autosave error:', error);
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
+        { error: 'Invalid autosave data', details: error.errors },
         { status: 400 }
       );
     }
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to save draft' },
       { status: 500 }
     );
   }
 }
 
+// Retrieve autosaved content
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await getUserFromToken(token);
+    const user = await getUserFromToken(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Find existing draft
-    const draft = await prisma.item.findFirst({
+    const { id } = params;
+
+    const item = await prisma.item.findFirst({
       where: {
-        userId: user.id,
-        metadata: {
-          contains: `"isDraft":true,"originalItemId":"${id}"`,
-        },
-      },
+        id: id,
+        userId: user.id
+      }
     });
 
-    if (!draft) {
-      return NextResponse.json({ draft: null });
+    if (!item) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const metadata = JSON.parse(draft.metadata || '{}');
+    const autosave = item.metadata?.autosave;
     
+    if (!autosave) {
+      return NextResponse.json({ 
+        success: true,
+        hasAutosave: false,
+        message: 'No autosaved content found'
+      });
+    }
+
     return NextResponse.json({
-      draft: {
-        content: draft.content,
-        metadata: metadata,
-        lastSaved: metadata.lastAutoSaved,
-      },
+      success: true,
+      hasAutosave: true,
+      autosave: {
+        content: autosave.content,
+        savedAt: autosave.savedAt,
+        version: autosave.version || 1
+      }
     });
+
   } catch (error) {
-    console.error('Error retrieving draft:', error);
+    console.error('Autosave retrieval error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to retrieve autosaved content' },
       { status: 500 }
     );
   }
 }
 
+// Delete autosaved content
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await getUserFromToken(token);
+    const user = await getUserFromToken(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Delete draft
-    await prisma.item.deleteMany({
+    const { id } = params;
+
+    const item = await prisma.item.findFirst({
       where: {
-        userId: user.id,
-        metadata: {
-          contains: `"isDraft":true,"originalItemId":"${id}"`,
-        },
-      },
+        id: id,
+        userId: user.id
+      }
     });
 
-    return NextResponse.json({ success: true });
+    if (!item) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    // Remove autosave from metadata
+    const updatedMetadata = { ...item.metadata };
+    delete updatedMetadata.autosave;
+
+    await prisma.item.update({
+      where: { id },
+      data: {
+        metadata: updatedMetadata,
+        updatedAt: new Date()
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Autosaved content deleted successfully'
+    });
+
   } catch (error) {
-    console.error('Error deleting draft:', error);
+    console.error('Autosave deletion error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to delete autosaved content' },
       { status: 500 }
     );
   }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -435,18 +434,15 @@ function ImportReviewContent() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64">
           <RefreshCw className="h-8 w-8 animate-spin" />
         </div>
-      </DashboardLayout>
     );
   }
 
   if (!importId || stagedItems.length === 0) {
     return (
-      <DashboardLayout>
-        <div className="text-center py-12">
+      <div className="text-center py-12">
           <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
           <h3 className="text-lg font-medium mb-2">No items to review</h3>
           <p className="text-muted-foreground mb-4">
@@ -456,7 +452,6 @@ function ImportReviewContent() {
             Go to Import
           </Button>
         </div>
-      </DashboardLayout>
     );
   }
 
@@ -465,8 +460,7 @@ function ImportReviewContent() {
   const rejectedCount = stagedItems.filter(item => item.status === 'rejected').length;
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Review Import</h1>
@@ -654,18 +648,15 @@ function ImportReviewContent() {
           )}
         </div>
       </div>
-    </DashboardLayout>
   );
 }
 
 export default function ImportReviewPage() {
   return (
     <Suspense fallback={
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
+      <div className="flex items-center justify-center h-64">
           <RefreshCw className="h-8 w-8 animate-spin" />
         </div>
-      </DashboardLayout>
     }>
       <ImportReviewContent />
     </Suspense>

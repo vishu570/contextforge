@@ -38,6 +38,9 @@ import {
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
+// Import specialized form
+import { SpecializedEditForm } from '@/src/components/specialized-editors/specialized-edit-form';
+
 // Dynamically import Monaco Editor to avoid SSR issues
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -100,6 +103,20 @@ const formatOptions = {
 };
 
 export function EditItemForm({ item, availableTags, type, userId }: EditItemFormProps) {
+  // Check if this item type should use a specialized editor
+  const useSpecializedEditor = ['prompt', 'agent', 'rule'].includes(item.type?.toLowerCase());
+  
+  // If specialized editor is available, use it instead
+  if (useSpecializedEditor) {
+    return (
+      <SpecializedEditForm
+        item={item}
+        availableTags={availableTags}
+        type={type}
+        userId={userId}
+      />
+    );
+  }
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
@@ -549,7 +566,24 @@ export function EditItemForm({ item, availableTags, type, userId }: EditItemForm
                 </div>
 
                 <div>
-                  <Label htmlFor="content">Content</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="content">Content</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(form.watch('content'));
+                        toast({
+                          title: 'Copied!',
+                          description: 'Content copied to clipboard',
+                        });
+                      }}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Content
+                    </Button>
+                  </div>
                   <div className="mt-2 border rounded-md overflow-hidden bg-background">
                     <MonacoEditor
                       height="400px"

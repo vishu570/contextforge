@@ -9,6 +9,7 @@ The ContextForge Swarm System is a comprehensive hive-mind architecture designed
 ### Topology: Hierarchical Swarm
 
 The system uses a hierarchical topology with:
+
 - **Orchestrator**: Central coordinator for task distribution and resource allocation
 - **Specialized Teams**: Domain-specific agent teams with focused responsibilities
 - **Communication Layer**: Event-driven message passing and consensus protocols
@@ -17,30 +18,35 @@ The system uses a hierarchical topology with:
 ### Team Structure
 
 1. **UI/UX Design Team** (`uiux`)
+
    - Dashboard transformation to AI Context Command Center
    - User experience optimization and flow improvements
    - Component design system enhancement
    - Responsive design and accessibility
 
 2. **Backend Architecture Team** (`backend`)
+
    - Real-time processing pipeline development
    - Background job queue implementation
    - Database optimization and scaling
    - API performance enhancements
 
 3. **AI Integration Team** (`ai`)
+
    - LLM optimization and model-specific tuning
    - Embedding systems and vector search
    - AI-powered context assembly intelligence
    - Machine learning model integration
 
 4. **Developer Tools Team** (`devtools`)
+
    - CLI tool development and enhancement
    - API design and documentation
    - SDK creation for third-party integrations
    - IDE plugin architecture
 
 5. **Analytics Team** (`analytics`)
+
    - Advanced analytics and insights development
    - Performance metrics and monitoring
    - User behavior analysis
@@ -64,7 +70,8 @@ The system uses a hierarchical topology with:
 ### Prerequisites
 
 Ensure you have the following installed:
-- Node.js 18+ 
+
+- Node.js 18+
 - TypeScript
 - ts-node
 
@@ -72,29 +79,29 @@ Ensure you have the following installed:
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Start the swarm system
-npm run swarm:start
+pnpm run swarm:start
 ```
 
 ### Available Commands
 
 ```bash
 # Start the swarm
-npm run swarm:start
+pnpm run swarm:start
 
 # Check swarm status
-npm run swarm:status
+pnpm run swarm:status
 
 # View performance metrics
-npm run swarm:metrics
+pnpm run swarm:metrics
 
 # Check system health
-npm run swarm:health
+pnpm run swarm:health
 
 # Stop the swarm
-npm run swarm:stop
+pnpm run swarm:stop
 ```
 
 ## Configuration
@@ -156,6 +163,7 @@ The swarm system is configured via `swarm-config.json`:
 ### Health Monitoring
 
 The system continuously monitors:
+
 - Communication system health
 - Orchestration efficiency
 - Team performance and utilization
@@ -176,7 +184,7 @@ Upon initialization, the swarm creates the following priority tasks:
 
 ## File Structure
 
-```
+```bash
 lib/swarm/
 ├── communication.ts    # Message passing and protocols
 ├── orchestrator.ts    # Task distribution and coordination
@@ -198,60 +206,62 @@ swarm-config.json      # System configuration
 ### Adding New Tasks
 
 ```typescript
-import { swarmOrchestrator } from './lib/swarm/orchestrator';
+import { swarmOrchestrator } from "./lib/swarm/orchestrator"
 
 await swarmOrchestrator.addTask({
-  title: 'New Feature Implementation',
-  description: 'Detailed description of the task',
-  type: 'feature',
-  priority: 'high',
+  title: "New Feature Implementation",
+  description: "Detailed description of the task",
+  type: "feature",
+  priority: "high",
   estimatedEffort: 16,
   dependencies: [],
-  acceptanceCriteria: ['Criteria 1', 'Criteria 2'],
-  tags: ['feature', 'enhancement']
-});
+  acceptanceCriteria: ["Criteria 1", "Criteria 2"],
+  tags: ["feature", "enhancement"],
+})
 ```
 
 ### Adding New Feedback Loops
 
 ```typescript
-import { swarmMonitor } from './lib/swarm/monitoring';
+import { swarmMonitor } from "./lib/swarm/monitoring"
 
 swarmMonitor.addFeedbackLoop({
-  id: 'custom_monitor',
-  name: 'Custom Performance Monitor',
-  trigger: 'threshold',
-  condition: { metric: 'custom_metric', operator: '>', value: 0.8 },
+  id: "custom_monitor",
+  name: "Custom Performance Monitor",
+  trigger: "threshold",
+  condition: { metric: "custom_metric", operator: ">", value: 0.8 },
   actions: [
     {
-      type: 'alert',
-      parameters: { severity: 'high', message: 'Custom threshold exceeded' },
-      priority: 'high'
-    }
+      type: "alert",
+      parameters: { severity: "high", message: "Custom threshold exceeded" },
+      priority: "high",
+    },
   ],
   enabled: true,
-  executionCount: 0
-});
+  executionCount: 0,
+})
 ```
 
 ### Extending Communication
 
 ```typescript
-import { swarmComms } from './lib/swarm/communication';
+import { swarmComms } from "./lib/swarm/communication"
 
 // Send custom message
 await swarmComms.sendMessage({
-  from: 'custom_agent',
-  to: 'backend',
-  type: 'task_assignment',
-  payload: { /* custom data */ },
-  priority: 'medium'
-});
+  from: "custom_agent",
+  to: "backend",
+  type: "task_assignment",
+  payload: {
+    /* custom data */
+  },
+  priority: "medium",
+})
 
 // Subscribe to messages
-swarmComms.subscribe('custom_agent', (message) => {
-  console.log('Received message:', message);
-});
+swarmComms.subscribe("custom_agent", (message) => {
+  console.log("Received message:", message)
+})
 ```
 
 ## Troubleshooting
@@ -267,13 +277,13 @@ swarmComms.subscribe('custom_agent', (message) => {
 
 ```bash
 # Enable debug logging
-DEBUG=swarm:* npm run swarm:start
+DEBUG=swarm:* pnpm run swarm:start
 
 # Check system health
-npm run swarm:health
+pnpm run swarm:health
 
 # View detailed metrics
-npm run swarm:metrics
+pnpm run swarm:metrics
 ```
 
 ### Health Indicators

@@ -143,53 +143,53 @@ Our testing strategy follows the testing pyramid approach:
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Setup environment
 cp .env.example .env.test
 
 # Setup test database
-npx prisma db push --force-reset
+pnpm prisma db push --force-reset
 ```
 
 ### Test Commands
 
 ```bash
 # Run all tests
-npm run test:all
+pnpm test:all
 
 # Unit tests
-npm run test:unit
-npm run test:unit -- --watch
+pnpm test:unit
+pnpm test:unit -- --watch
 
 # Integration tests
-npm run test:integration
+pnpm test:integration
 
 # End-to-end tests
-npm run test:e2e
-npm run test:e2e:ui  # Interactive mode
+pnpm test:e2e
+pnpm test:e2e:ui  # Interactive mode
 
 # Performance tests
-npm run test:performance
+pnpm test:performance
 
 # Security tests
-npm run test:security
+pnpm test:security
 
 # Coverage report
-npm run test:coverage
+pnpm test:coverage
 ```
 
 ### Test Filtering
 
 ```bash
 # Run specific test file
-npm test -- optimization-pipeline.test.ts
+pnpm test -- optimization-pipeline.test.ts
 
 # Run tests matching pattern
-npm test -- --testNamePattern="should handle"
+pnpm test -- --testNamePattern="should handle"
 
 # Run tests for specific component
-npm run test:unit -- --testPathPattern="swarm"
+pnpm test:unit -- --testPathPattern="swarm"
 ```
 
 ## Test Structure
@@ -279,7 +279,7 @@ coverageThreshold: {
 
 ```bash
 # Generate HTML report
-npm run test:coverage
+pnpm test:coverage
 
 # View report
 open coverage/lcov-report/index.html
@@ -440,7 +440,7 @@ Tests must pass before code can be merged:
 2. **Database Connection Issues**:
    ```bash
    # Reset test database
-   npx prisma db push --force-reset
+   pnpm prisma db push --force-reset
    
    # Check database URL
    echo $DATABASE_URL
@@ -469,12 +469,12 @@ Tests must pass before code can be merged:
 
 1. **Debug Single Test**:
    ```bash
-   npm test -- --testNamePattern="specific test" --verbose
+   pnpm test -- --testNamePattern="specific test" --verbose
    ```
 
 2. **Debug E2E Tests**:
    ```bash
-   npm run test:e2e:ui  # Opens Playwright UI
+   pnpm test:e2e:ui  # Opens Playwright UI
    ```
 
 3. **Debug with Chrome DevTools**:

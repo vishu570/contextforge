@@ -1,170 +1,227 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getUserFromToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { z } from 'zod';
+import { randomBytes } from 'crypto';
 
-const shareConfigSchema = z.object({
+const shareSchema = z.object({
+  permission: z.enum(['view', 'comment', 'edit']).default('view'),
   expiresAt: z.string().optional(),
-  requireAuth: z.boolean().default(false),
-  allowComments: z.boolean().default(false),
-  permissions: z.enum(['view', 'comment', 'edit']).default('view'),
+  password: z.string().optional(),
+  allowDownload: z.boolean().default(false),
+  recipientEmail: z.string().email().optional()
 });
 
+// Create a share link for an item
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await getUserFromToken(token);
+    const user = await getUserFromToken(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const { id } = params;
     const body = await request.json();
-    const config = shareConfigSchema.parse(body);
+    const validatedData = shareSchema.parse(body);
 
-    // Check if item exists and belongs to user
+    // Verify item ownership
     const item = await prisma.item.findFirst({
       where: {
-        id,
-        userId: user.id,
-      },
+        id: id,
+        userId: user.id
+      }
     });
 
     if (!item) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    // Generate a unique share token
-    const shareToken = generateShareToken();
-    
-    // Store share configuration in item metadata
-    const currentMetadata = JSON.parse(item.metadata || '{}');
-    const shareConfig = {
+    // Generate secure share token
+    const shareToken = randomBytes(32).toString('hex');
+    const expiresAt = validatedData.expiresAt 
+      ? new Date(validatedData.expiresAt)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days default
+
+    // Create share record in database
+    // For now, store in item metadata - in production use separate shares table
+    const shareData = {
       token: shareToken,
+      permission: validatedData.permission,
+      expiresAt: expiresAt.toISOString(),
+      password: validatedData.password,
+      allowDownload: validatedData.allowDownload,
+      recipientEmail: validatedData.recipientEmail,
       createdAt: new Date().toISOString(),
       createdBy: user.id,
-      expiresAt: config.expiresAt,
-      requireAuth: config.requireAuth,
-      allowComments: config.allowComments,
-      permissions: config.permissions,
+      views: 0,
+      lastAccessedAt: null
     };
 
-    currentMetadata.shareConfig = shareConfig;
-
-    await prisma.item.update({
+    const updatedItem = await prisma.item.update({
       where: { id },
       data: {
-        metadata: JSON.stringify(currentMetadata),
-      },
+        metadata: {
+          ...item.metadata,
+          shares: {
+            ...item.metadata?.shares,
+            [shareToken]: shareData
+          }
+        },
+        updatedAt: new Date()
+      }
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        itemId: id,
-        action: 'share',
-        entityType: 'item',
-        entityId: id,
-        metadata: JSON.stringify(shareConfig),
-      },
-    });
-
-    const shareUrl = `${request.nextUrl.origin}/shared/${shareToken}`;
+    // Generate share URL
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const shareUrl = `${baseUrl}/shared/${shareToken}`;
 
     return NextResponse.json({
+      success: true,
       shareUrl,
       shareToken,
-      config: shareConfig,
+      permission: validatedData.permission,
+      expiresAt: expiresAt.toISOString(),
+      item: {
+        id: item.id,
+        title: item.title,
+        type: item.type
+      }
     });
+
   } catch (error) {
-    console.error('Error creating share link:', error);
+    console.error('Share creation error:', error);
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
+        { error: 'Invalid share data', details: error.errors },
         { status: 400 }
       );
     }
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create share link' },
       { status: 500 }
     );
   }
 }
 
-export async function DELETE(
+// Get existing shares for an item
+export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
-    const token = request.cookies.get('auth-token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await getUserFromToken(token);
+    const user = await getUserFromToken(request);
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check if item exists and belongs to user
+    const { id } = params;
+
     const item = await prisma.item.findFirst({
       where: {
-        id,
-        userId: user.id,
-      },
+        id: id,
+        userId: user.id
+      }
     });
 
     if (!item) {
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    // Remove share configuration from metadata
-    const currentMetadata = JSON.parse(item.metadata || '{}');
-    delete currentMetadata.shareConfig;
+    const shares = item.metadata?.shares || {};
+    const activeShares = Object.entries(shares)
+      .filter(([token, share]: [string, any]) => {
+        const expiresAt = new Date(share.expiresAt);
+        return expiresAt > new Date();
+      })
+      .map(([token, share]: [string, any]) => ({
+        token,
+        permission: share.permission,
+        createdAt: share.createdAt,
+        expiresAt: share.expiresAt,
+        views: share.views || 0,
+        lastAccessedAt: share.lastAccessedAt,
+        recipientEmail: share.recipientEmail
+      }));
 
-    await prisma.item.update({
-      where: { id },
-      data: {
-        metadata: JSON.stringify(currentMetadata),
-      },
+    return NextResponse.json({
+      success: true,
+      shares: activeShares,
+      total: activeShares.length
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: user.id,
-        itemId: id,
-        action: 'unshare',
-        entityType: 'item',
-        entityId: id,
-        metadata: JSON.stringify({ action: 'removed_share_link' }),
-      },
-    });
-
-    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error removing share link:', error);
+    console.error('Share retrieval error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to retrieve shares' },
       { status: 500 }
     );
   }
 }
 
-function generateShareToken(): string {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < 32; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
+// Revoke a share link
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getUserFromToken(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id } = params;
+    const { searchParams } = new URL(request.url);
+    const shareToken = searchParams.get('token');
+
+    if (!shareToken) {
+      return NextResponse.json({ error: 'Share token required' }, { status: 400 });
+    }
+
+    const item = await prisma.item.findFirst({
+      where: {
+        id: id,
+        userId: user.id
+      }
+    });
+
+    if (!item) {
+      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    }
+
+    const shares = item.metadata?.shares || {};
+    if (!shares[shareToken]) {
+      return NextResponse.json({ error: 'Share not found' }, { status: 404 });
+    }
+
+    // Remove the share
+    delete shares[shareToken];
+
+    await prisma.item.update({
+      where: { id },
+      data: {
+        metadata: {
+          ...item.metadata,
+          shares
+        },
+        updatedAt: new Date()
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Share link revoked successfully'
+    });
+
+  } catch (error) {
+    console.error('Share revocation error:', error);
+    return NextResponse.json(
+      { error: 'Failed to revoke share link' },
+      { status: 500 }
+    );
   }
-  return result;
 }

@@ -7,20 +7,20 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY prisma ./prisma/
 
 # Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate && pnpm install --frozen-lockfile
 
 # Generate Prisma client
-RUN npx prisma generate
+RUN pnpm prisma generate
 
 # Copy source code
 COPY . .
 
 # Build the application
-RUN npm run build
+RUN pnpm build
 
 # Production stage
 FROM node:18-alpine AS production
@@ -72,7 +72,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3000/api/health || exit 1
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["pnpm", "start"]
 
 # Development stage
 FROM node:18-alpine AS development
@@ -88,16 +88,16 @@ RUN apk add --no-cache \
     git
 
 # Copy package files
-COPY package*.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install all dependencies (including dev)
-RUN npm ci
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate && pnpm install
 
 # Copy source code
 COPY . .
 
 # Generate Prisma client
-RUN npx prisma generate
+RUN pnpm prisma generate
 
 # Create data directory
 RUN mkdir -p /app/data
@@ -111,4 +111,4 @@ ENV DATABASE_URL="file:/app/data/dev.db"
 EXPOSE 3000 5555
 
 # Start development server
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "dev"]

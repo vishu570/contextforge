@@ -241,7 +241,7 @@ contextforge config set auto-optimization true
 #### **Developer Tools Release**
 ```bash
 # CLI installation
-npm install -g @contextforge/cli
+pnpm add -g @contextforge/cli
 
 # GitHub Actions templates
 cp .github/workflows/templates/* .github/workflows/

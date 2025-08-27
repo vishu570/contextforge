@@ -2,7 +2,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getUserFromToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { DashboardLayout } from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -115,8 +114,7 @@ export default async function HistoryPage() {
   const { auditLogs, imports, versions } = await getHistoryData(user.id);
 
   return (
-    <DashboardLayout user={user}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">History</h1>
@@ -331,6 +329,5 @@ export default async function HistoryPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
   );
 }

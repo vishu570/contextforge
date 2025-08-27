@@ -26,6 +26,10 @@ export enum WebSocketEventType {
   ITEM_DELETED = 'item_deleted',
   COLLECTION_UPDATED = 'collection_updated',
   
+  // Workflow events
+  WORKFLOW_EVENT = 'workflow_event',
+  WORKFLOW_PROGRESS = 'workflow_progress',
+  
   // Notifications
   NOTIFICATION = 'notification',
   ALERT = 'alert',

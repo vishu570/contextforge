@@ -90,7 +90,20 @@ export async function authenticateUser(email: string, password: string) {
   return user;
 }
 
-export async function getUserFromToken(token: string) {
+export async function getUserFromToken(tokenOrRequest: string | any) {
+  let token: string | undefined;
+  
+  if (typeof tokenOrRequest === 'string') {
+    token = tokenOrRequest;
+  } else {
+    // Handle NextRequest object
+    token = tokenOrRequest.cookies?.get('auth-token')?.value;
+  }
+  
+  if (!token) {
+    return null;
+  }
+  
   const payload = verifyToken(token);
   
   if (!payload) {

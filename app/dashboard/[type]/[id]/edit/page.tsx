@@ -2,8 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getUserFromToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { DashboardLayout } from '@/components/dashboard-layout';
-import { EditItemForm } from '@/components/edit-item-form';
+import { SimpleEditForm } from '@/components/simple-edit-form';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -25,31 +24,6 @@ async function getItem(id: string, userId: string) {
       tags: {
         include: {
           tag: true,
-        },
-      },
-      versions: {
-        orderBy: { versionNumber: 'desc' },
-        take: 10,
-      },
-      optimizations: {
-        where: { status: 'suggested' },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      },
-      conversions: {
-        where: { status: 'suggested' },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      },
-      source: true,
-      canonical: true,
-      duplicates: {
-        include: {
-          tags: {
-            include: {
-              tag: true,
-            },
-          },
         },
       },
     },
@@ -106,8 +80,7 @@ export default async function EditItemPage({ params }: EditPageProps) {
   const capitalizedType = type.charAt(0).toUpperCase() + type.slice(0, -1);
 
   return (
-    <DashboardLayout user={user}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4">
           <Button variant="ghost" size="icon" asChild>
@@ -126,13 +99,12 @@ export default async function EditItemPage({ params }: EditPageProps) {
         </div>
 
         {/* Edit Form */}
-        <EditItemForm 
+        <SimpleEditForm 
           item={item} 
           availableTags={allTags}
           type={type}
           userId={user.id}
         />
       </div>
-    </DashboardLayout>
   );
 }

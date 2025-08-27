@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     networks:
       - contextforge-dev-network
-    command: ["npm", "run", "dev"]
+    command: ["pnpm", "dev"]
 
   # Redis for development
   redis-dev:

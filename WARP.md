@@ -90,43 +90,43 @@ contextforge-app/
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Set up database
-npx prisma generate
-npx prisma db push
+pnpm prisma generate
+pnpm prisma db push
 
 # Start development server with Turbopack
-npm run dev
+pnpm dev
 ```
 
 ### Database Management
 
 ```bash
 # Generate Prisma client after schema changes
-npx prisma generate
+pnpm prisma generate
 
 # Push schema changes to database
-npx prisma db push
+pnpm prisma db push
 
 # View database in Prisma Studio
-npx prisma studio
+pnpm prisma studio
 
 # Reset database (development only)
-npx prisma db push --force-reset
+pnpm prisma db push --force-reset
 ```
 
 ### Build & Deploy
 
 ```bash
 # Build for production
-npm run build
+pnpm build
 
 # Start production server
-npm run start
+pnpm start
 
 # Run linting
-npm run lint
+pnpm lint
 ```
 
 ## Database Architecture
@@ -238,8 +238,8 @@ The import system supports multiple sources and formats with intelligent content
 ### Database Schema Changes
 
 1. Modify `prisma/schema.prisma`
-2. Run `npx prisma generate`
-3. Push changes with `npx prisma db push`
+2. Run `pnpm prisma generate`
+3. Push changes with `pnpm prisma db push`
 4. Update related TypeScript types and API handlers
 
 ## UI Component System
@@ -288,7 +288,7 @@ GITHUB_TOKEN="your-github-token"
 **Database Connection**
 
 - Ensure `DATABASE_URL` is correctly set
-- Run `npx prisma generate` after schema changes
+- Run `pnpm prisma generate` after schema changes
 - Check file permissions for SQLite database
 
 **Authentication Problems**
@@ -306,23 +306,23 @@ GITHUB_TOKEN="your-github-token"
 **Development Setup**
 
 - Use Node.js version 20+ for compatibility
-- Install dependencies with `npm install` (not yarn due to lock file)
+- Install dependencies with `pnpm install`
 - Ensure TypeScript is properly configured with `tsc --noEmit`
 
 ### Debugging Commands
 
 ```bash
 # Check database contents
-npx prisma studio
+pnpm prisma studio
 
 # Type checking
-npx tsc --noEmit
+pnpm tsc --noEmit
 
 # Lint and format
-npm run lint
+pnpm lint
 
 # Check build
-npm run build
+pnpm build
 ```
 
 ## Key File References

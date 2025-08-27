@@ -2,7 +2,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getUserFromToken } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { DashboardLayout } from '@/components/dashboard-layout';
 import { FolderManagementInterface } from '@/components/folder-management-interface';
 
 async function getFolders(userId: string) {
@@ -96,8 +95,7 @@ export default async function CollectionsPage() {
   ]);
 
   return (
-    <DashboardLayout user={user}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Folder Management</h1>
@@ -113,6 +111,5 @@ export default async function CollectionsPage() {
           userId={user.id}
         />
       </div>
-    </DashboardLayout>
   );
 }
