@@ -128,11 +128,22 @@ export default function ImportPage() {
       });
 
       if (!response.ok) {
-        throw new Error('GitHub import failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'GitHub import failed');
       }
 
       const result = await response.json();
-      setSuccess(`Successfully imported ${result.imported} items from GitHub repository`);
+      
+      // Show more detailed success message
+      let successMessage = `Successfully imported ${result.imported} items from GitHub repository`;
+      if (result.failed > 0) {
+        successMessage += ` (${result.failed} files failed to process)`;
+      }
+      if (result.total > 0) {
+        successMessage += ` out of ${result.total} files found`;
+      }
+      
+      setSuccess(successMessage);
       setGithubUrl('');
       
       setTimeout(() => {
@@ -362,9 +373,16 @@ export default function ImportPage() {
                     onChange={(e) => setPathGlob(e.target.value)}
                     disabled={isImporting}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Use glob patterns to filter files (e.g., "prompts/**/*.md")
-                  </p>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p>Use glob patterns to filter files. Common patterns:</p>
+                    <ul className="list-disc list-inside ml-2 space-y-1">
+                      <li><code>**/*.md</code> - All Markdown files</li>
+                      <li><code>prompts/**/*</code> - Files in prompts directory</li>
+                      <li><code>*.{json,yaml}</code> - JSON and YAML in root</li>
+                      <li><code>**/*.prompt</code> - All .prompt files</li>
+                    </ul>
+                    <p className="mt-2">Leave empty to import all supported file types.</p>
+                  </div>
                 </div>
 
                 <Button

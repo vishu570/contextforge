@@ -160,16 +160,32 @@ export function SimpleEditForm({ item, availableTags, type, userId }: SimpleEdit
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5" />
-              <span>Edit {item.type}</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Edit Form */}
+        <div className="lg:col-span-2 space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="h-5 w-5" />
+                    <span>Edit {item.type}</span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={copyContent}
+                    >
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy
+                    </Button>
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
             {/* Name and Format */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -206,21 +222,10 @@ export function SimpleEditForm({ item, availableTags, type, userId }: SimpleEdit
 
             {/* Content */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor="content">Content</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={copyContent}
-                >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Copy Content
-                </Button>
-              </div>
-              <div className="border rounded-md overflow-hidden bg-background">
+              <Label htmlFor="content">Content</Label>
+              <div className="mt-2 border rounded-md overflow-hidden bg-background">
                 <MonacoEditor
-                  height="400px"
+                  height="500px"
                   language={getEditorLanguage(form.watch('format'))}
                   value={form.watch('content')}
                   onChange={(value) => form.setValue('content', value || '')}
@@ -310,27 +315,116 @@ export function SimpleEditForm({ item, availableTags, type, userId }: SimpleEdit
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
-        <div className="flex justify-between items-center border-t pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleCancel}
-            disabled={isLoading}
-          >
-            <X className="mr-2 h-4 w-4" />
-            Cancel
-          </Button>
+            {/* Action Buttons */}
+            <div className="flex justify-between items-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                <X className="mr-2 h-4 w-4" />
+                Cancel
+              </Button>
 
-          <Button
-            type="submit"
-            disabled={isLoading}
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {isLoading ? 'Saving...' : 'Save Changes'}
-          </Button>
+              <Button
+                type="submit"
+                disabled={isLoading}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {isLoading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
         </div>
-      </form>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Metadata */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Metadata</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Type</Label>
+                <p className="text-sm capitalize">{item.type}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Format</Label>
+                <p className="text-sm">{form.watch('format')}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Created</Label>
+                <p className="text-sm">{new Date(item.createdAt).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Last Modified</Label>
+                <p className="text-sm">{new Date(item.updatedAt).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Word Count</Label>
+                <p className="text-sm">{form.watch('content').split(/\s+/).length}</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Character Count</Label>
+                <p className="text-sm">{form.watch('content').length}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Preview */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Preview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div className="bg-muted/50 rounded-md p-3 text-sm max-h-64 overflow-y-auto">
+                  {form.watch('content').slice(0, 500)}
+                  {form.watch('content').length > 500 && '...'}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                onClick={copyContent}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copy Content
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full justify-start"
+                onClick={() => {
+                  const url = `${window.location.origin}/api/items/${item.id}/export`;
+                  navigator.clipboard.writeText(url);
+                  toast({
+                    title: 'Copied!',
+                    description: 'Export URL copied to clipboard',
+                  });
+                }}
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Copy Export URL
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

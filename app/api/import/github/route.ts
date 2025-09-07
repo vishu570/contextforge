@@ -106,15 +106,35 @@ export async function POST(request: NextRequest) {
         recursive: 'true',
       });
 
-      // Filter files based on glob pattern
-      const matchingFiles = treeData.tree.filter(item => {
+      // Enhanced file filtering with better pattern matching
+      const patterns = pathGlob.split(',').map(p => p.trim()).filter(p => p.length > 0);
+      
+      let matchingFiles = treeData.tree.filter(item => {
         if (item.type !== 'blob' || !item.path) return false;
         
-        // Convert glob pattern to work with minimatch
-        const patterns = pathGlob.split(',').map(p => p.trim());
-        return patterns.some(pattern => minimatch(item.path, pattern));
+        // Check against each pattern
+        for (const pattern of patterns) {
+          if (minimatch(item.path, pattern, { nocase: true })) {
+            return true;
+          }
+        }
+        
+        // Additional fallback checks for common extensions
+        const path = item.path.toLowerCase();
+        const commonExtensions = [
+          '.md', '.markdown', '.json', '.yaml', '.yml', '.xml', 
+          '.prompt', '.agent', '.af', '.mdc', '.txt', '.csv'
+        ];
+        
+        return commonExtensions.some(ext => path.endsWith(ext));
       });
 
+      // Remove duplicates (in case fallback caught files already matched by patterns)
+      const uniqueFiles = Array.from(
+        new Map(matchingFiles.map(file => [file.path, file])).values()
+      );
+
+      matchingFiles = uniqueFiles;
       totalFiles = matchingFiles.length;
 
       // Update total files count
@@ -123,15 +143,27 @@ export async function POST(request: NextRequest) {
         data: { totalFiles },
       });
 
-      // If no files matched, try with all markdown files as fallback
+      // If still no files matched, try broader fallback
       if (totalFiles === 0) {
-        const mdFiles = treeData.tree.filter(item => {
-          return item.type === 'blob' && item.path && item.path.endsWith('.md');
+        const broadFiles = treeData.tree.filter(item => {
+          if (item.type !== 'blob' || !item.path) return false;
+          const path = item.path.toLowerCase();
+          
+          // Look for any text-based files that might contain prompts or configs
+          return (
+            path.includes('prompt') || 
+            path.includes('agent') || 
+            path.includes('config') ||
+            path.includes('template') ||
+            path.endsWith('.md') ||
+            path.endsWith('.txt') ||
+            path.endsWith('.json')
+          );
         });
         
-        if (mdFiles.length > 0) {
-          matchingFiles.push(...mdFiles);
-          totalFiles = mdFiles.length;
+        if (broadFiles.length > 0) {
+          matchingFiles = broadFiles;
+          totalFiles = broadFiles.length;
           
           // Update total files count
           await prisma.import.update({
@@ -272,16 +304,65 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Import error:', error);
     
+    // Update import record with error status
+    try {
+      await prisma.import.update({
+        where: { id: importRecord.id },
+        data: {
+          status: 'failed',
+          completedAt: new Date(),
+          errorLog: `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        },
+      });
+    } catch (updateError) {
+      console.error('Failed to update import record with error status:', updateError);
+    }
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.issues },
+        { 
+          error: 'Invalid request data', 
+          details: error.issues.map(issue => ({
+            field: issue.path.join('.'),
+            message: issue.message
+          }))
+        },
         { status: 400 }
       );
     }
     
+    // Enhanced error messages based on error type
+    let errorMessage = 'Failed to import from GitHub';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API rate limit')) {
+        errorMessage = 'GitHub API rate limit exceeded. Please try again later or configure a GitHub token.';
+        statusCode = 429;
+      } else if (error.message.includes('Not Found')) {
+        errorMessage = 'Repository not found. Please check the URL and ensure the repository is public or you have access.';
+        statusCode = 404;
+      } else if (error.message.includes('Bad credentials')) {
+        errorMessage = 'Invalid GitHub token. Please check your GitHub token configuration.';
+        statusCode = 401;
+      } else if (error.message.includes('Forbidden')) {
+        errorMessage = 'Access denied. Please ensure the repository is public or configure a GitHub token with appropriate permissions.';
+        statusCode = 403;
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Request timed out. The repository may be too large or GitHub is experiencing issues.';
+        statusCode = 504;
+      } else {
+        errorMessage = `Import failed: ${error.message}`;
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to import from GitHub' },
-      { status: 500 }
+      { 
+        error: errorMessage,
+        details: error instanceof Error ? error.message : 'Unknown error',
+        helpText: 'Try checking the repository URL, ensuring it\'s public, or configuring a GitHub token in Settings.'
+      },
+      { status: statusCode }
     );
   }
 }
