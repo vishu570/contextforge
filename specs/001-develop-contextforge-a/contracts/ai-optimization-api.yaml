@@ -1,0 +1,167 @@
+openapi: 3.0.3
+info:
+  title: ContextForge AI Optimization API
+  description: API endpoints for AI-powered context artifact optimization
+  version: 1.0.0
+
+paths:
+  /api/ai/optimize:
+    post:
+      summary: Optimize a context artifact using AI
+      description: Enhance the quality and effectiveness of a context artifact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - itemId
+                - optimizationType
+              properties:
+                itemId:
+                  type: string
+                  description: ID of the context artifact to optimize
+                optimizationType:
+                  type: string
+                  enum: [content, structure, metadata, categorization]
+                  description: Type of optimization to perform
+                provider:
+                  type: string
+                  enum: [openai, anthropic, gemini, auto]
+                  default: auto
+                  description: AI provider to use for optimization
+                preserveOriginal:
+                  type: boolean
+                  default: true
+                  description: Whether to preserve original content
+      responses:
+        200:
+          description: Optimization completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizationResult'
+        202:
+          description: Optimization queued for background processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                  estimatedCompletion:
+                    type: string
+                    format: date-time
+        400:
+          description: Invalid request parameters
+        404:
+          description: Item not found
+        429:
+          description: Rate limit exceeded
+
+  /api/ai/optimize/{jobId}/status:
+    get:
+      summary: Check optimization job status
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [pending, processing, completed, failed]
+                  progress:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                  result:
+                    $ref: '#/components/schemas/OptimizationResult'
+                  error:
+                    type: string
+
+  /api/ai/categorize:
+    post:
+      summary: AI-powered categorization of context artifacts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - itemId
+              properties:
+                itemId:
+                  type: string
+                maxSuggestions:
+                  type: integer
+                  default: 5
+                  minimum: 1
+                  maximum: 10
+      responses:
+        200:
+          description: Categories suggested successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CategorySuggestion'
+
+components:
+  schemas:
+    OptimizationResult:
+      type: object
+      properties:
+        id:
+          type: string
+        itemId:
+          type: string
+        optimizationType:
+          type: string
+          enum: [content, structure, metadata, categorization]
+        originalVersion:
+          type: string
+        optimizedVersion:
+          type: string
+        improvementNotes:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        aiProvider:
+          type: string
+        processingTime:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CategorySuggestion:
+      type: object
+      properties:
+        categoryName:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reasoning:
+          type: string
+        existingCategory:
+          type: boolean

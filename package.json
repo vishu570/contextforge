@@ -2,7 +2,7 @@
   "name": "contextforge-app",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.15.0",
+  "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "next dev --turbopack --port 3001",
     "build": "next build",
@@ -14,7 +14,9 @@
     "swarm:health": "ts-node scripts/swarm-health.ts",
     "swarm:stop": "ts-node scripts/swarm-stop.ts",
     "server:start": "ts-node scripts/start-server.ts",
-    "server:dev": "concurrently \"pnpm dev\" \"pnpm server:start\""
+    "server:dev": "concurrently \"pnpm dev\" \"pnpm server:start\"",
+    "queue:status": "ts-node scripts/queue-status.ts",
+    "queue:clear": "ts-node scripts/queue-clear.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.60.0",

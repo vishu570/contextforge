@@ -1,0 +1,197 @@
+openapi: 3.0.3
+info:
+  title: ContextForge Import API
+  description: API endpoints for importing context artifacts from various sources
+  version: 1.0.0
+
+paths:
+  /api/import/github:
+    post:
+      summary: Import context artifacts from GitHub repository
+      description: Import prompts, configs, and other artifacts from a GitHub repo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: GitHub repository or file URL
+                filters:
+                  type: object
+                  properties:
+                    fileExtensions:
+                      type: array
+                      items:
+                        type: string
+                      default: [".md", ".txt", ".json", ".yml", ".yaml"]
+                    paths:
+                      type: array
+                      items:
+                        type: string
+                      description: Specific paths to import
+                    excludePaths:
+                      type: array
+                      items:
+                        type: string
+                      default: ["node_modules", ".git"]
+                autoCategorie:
+                  type: boolean
+                  default: true
+                  description: Whether to auto-categorize imported items
+                collectionId:
+                  type: string
+                  description: Target collection for imported items
+      responses:
+        202:
+          description: Import job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJob'
+        400:
+          description: Invalid GitHub URL or parameters
+        401:
+          description: Authentication required for private repositories
+        404:
+          description: Repository not found
+
+  /api/import/local:
+    post:
+      summary: Import context artifacts from local files/folders
+      description: Import artifacts from uploaded files or folder structures
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                preserveStructure:
+                  type: boolean
+                  default: true
+                  description: Preserve folder hierarchy as collections
+                autoCategorie:
+                  type: boolean
+                  default: true
+                filters:
+                  type: string
+                  description: JSON string of filter options
+      responses:
+        202:
+          description: Import job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportJob'
+        413:
+          description: Payload too large
+
+  /api/import/{jobId}/status:
+    get:
+      summary: Get import job status and progress
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Import status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [queued, processing, completed, failed, cancelled]
+                  progress:
+                    type: object
+                    properties:
+                      filesProcessed:
+                        type: integer
+                      totalFiles:
+                        type: integer
+                      currentFile:
+                        type: string
+                  results:
+                    type: object
+                    properties:
+                      itemsCreated:
+                        type: integer
+                      collectionsCreated:
+                        type: integer
+                      errors:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ImportError'
+                  startedAt:
+                    type: string
+                    format: date-time
+                  completedAt:
+                    type: string
+                    format: date-time
+
+  /api/import/{jobId}/cancel:
+    post:
+      summary: Cancel a running import job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Import job cancelled
+        404:
+          description: Job not found
+        409:
+          description: Job cannot be cancelled (already completed/failed)
+
+components:
+  schemas:
+    ImportJob:
+      type: object
+      properties:
+        id:
+          type: string
+        sourceType:
+          type: string
+          enum: [github_repo, github_file, local_folder, local_file]
+        sourceUrl:
+          type: string
+        status:
+          type: string
+          enum: [queued, processing, completed, failed, cancelled]
+        estimatedCompletion:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    ImportError:
+      type: object
+      properties:
+        file:
+          type: string
+        error:
+          type: string
+        severity:
+          type: string
+          enum: [warning, error, critical]

@@ -28,6 +28,9 @@ model User {
   contextGenerations ContextGeneration[]
   semanticSearches  SemanticSearch[]
   scheduledExports  ScheduledExport[]
+  optimizationResults OptimizationResult[]
+  optimizationQueue OptimizationQueue[]
+  itemCategories    ItemCategory[]
   settings          String       @default("{}")
   automationLevel   String       @default("auto-suggest")
   preferences       String       @default("{}")
@@ -78,6 +81,17 @@ model Item {
   generationItems ContextGenerationItem[]
   modelOptimizations ModelOptimization[]
   summary         ContentSummary?
+  // Enhanced fields for AI optimization
+  aiOptimizationStatus String     @default("none") // none, pending, optimized, failed
+  originalContent String?         // Backup of original content before optimization
+  optimizedContent String?        // AI-optimized version of content
+  autoCategories  String          @default("[]") // JSON array of AI-suggested categories
+  confidence      Float?          // AI confidence score 0.0-1.0
+  sourceType      String?         // manual, github, local, imported
+  sourceMetadata  String          @default("{}") // JSON metadata from source
+  optimizationResults OptimizationResult[]
+  optimizationQueue OptimizationQueue[]
+  itemCategories  ItemCategory[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -163,6 +177,13 @@ model Collection {
   organizationRules String         @default("{}") // JSON rules for auto-organization
   permissions     String           @default("{}") // JSON permissions for sharing
   analytics       String           @default("{}") // JSON analytics data
+  // Enhanced fields for AI categorization
+  categoryType    String?          // prompt, agent, rule, template, snippet, documentation
+  semanticEmbedding String?        // JSON array for semantic similarity
+  autoSuggestionRules String       @default("{}") // JSON rules for auto-categorization
+  parentCategoryId String?         // Reference to parent category for hierarchy
+  parentCategory  Collection?      @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: SetNull)
+  childCategories Collection[]     @relation("CategoryHierarchy")
   items           ItemCollection[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
@@ -201,6 +222,14 @@ model Import {
   failedFiles     Int       @default(0)
   metadata        String    @default("{}")
   errorLog        String?
+  // Enhanced fields for import management
+  sourceType      String           // github_repo, github_file, local_folder, local_file
+  sourceUrl       String?          // Original URL or path
+  importSettings  String           @default("{}") // JSON import configuration
+  scheduledSync   Boolean          @default(false) // Whether this is a scheduled sync
+  syncFrequency   String?          // daily, weekly, monthly
+  lastSyncAt      DateTime?        // Last successful sync timestamp
+  syncStatus      String           @default("none") // none, syncing, synced, failed
   startedAt       DateTime  @default(now())
   completedAt     DateTime?
   createdAt       DateTime  @default(now())
@@ -544,4 +573,103 @@ model ScheduledExport {
   @@index([userId])
   @@index([nextExecution])
   @@index([isActive])
+}
+
+// New models for enhanced AI optimization functionality
+
+enum OptimizationStatus {
+  none
+  pending
+  optimized  
+  failed
+}
+
+enum OptimizationType {
+  content
+  structure
+  metadata
+  categorization
+}
+
+model OptimizationResult {
+  id                String            @id @default(cuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId            String
+  item              Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  optimizationType  OptimizationType  // content, structure, metadata, categorization
+  originalVersion   String            // Original content/metadata before optimization
+  optimizedVersion  String            // AI-optimized version
+  confidence        Float             // AI confidence score 0.0-1.0
+  aiProvider        String            // openai, anthropic, gemini
+  aiModel           String            // gpt-4, claude-3-sonnet, gemini-1.5-pro
+  processingTime    Int?              // Time taken in milliseconds
+  tokenUsage        String            @default("{}") // JSON: {"input": 100, "output": 50}
+  costEstimate      Float?            // Estimated cost in USD
+  status            OptimizationStatus @default(pending)
+  errorMessage      String?           // Error details if failed
+  metadata          String            @default("{}") // Additional optimization metadata
+  reviewedBy        String?           // User ID who reviewed the optimization
+  reviewedAt        DateTime?         // When optimization was reviewed
+  approvedBy        String?           // User ID who approved the optimization
+  approvedAt        DateTime?         // When optimization was approved
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([itemId])
+  @@index([optimizationType])
+  @@index([status])
+  @@index([aiProvider])
+  @@index([createdAt])
+}
+
+model OptimizationQueue {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId          String
+  item            Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  optimizationType OptimizationType  // content, structure, metadata, categorization
+  priority        String            @default("medium") // low, medium, high, critical
+  status          String            @default("queued") // queued, processing, completed, failed, cancelled
+  aiProvider      String?           // Preferred AI provider
+  estimatedTime   Int?              // Estimated processing time in seconds
+  attempts        Int               @default(0) // Number of processing attempts
+  maxAttempts     Int               @default(3) // Maximum retry attempts
+  lastError       String?           // Last error message
+  scheduledFor    DateTime          @default(now()) // When to process this item
+  startedAt       DateTime?         // When processing started
+  completedAt     DateTime?         // When processing completed
+  createdAt       DateTime          @default(now())
+
+  @@index([status, priority])
+  @@index([userId])
+  @@index([itemId])
+  @@index([scheduledFor])
+  @@index([createdAt])
+}
+
+model ItemCategory {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId          String
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  categoryName    String   // AI-suggested or user-assigned category
+  confidence      Float    // AI confidence score 0.0-1.0 (1.0 for manual)
+  source          String   // ai_suggested, user_assigned, imported
+  aiProvider      String?  // Which AI suggested this category
+  reasoning       String?  // AI explanation for categorization
+  isApproved      Boolean  @default(false) // Whether user approved this category
+  approvedBy      String?  // User ID who approved
+  approvedAt      DateTime?
+  createdAt       DateTime @default(now())
+
+  @@unique([itemId, categoryName])
+  @@index([userId])
+  @@index([itemId])
+  @@index([categoryName])
+  @@index([confidence])
+  @@index([isApproved])
 }

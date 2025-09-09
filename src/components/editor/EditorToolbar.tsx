@@ -9,7 +9,8 @@ import {
   Search,
   Settings,
   User,
-  LogOut
+  LogOut,
+  Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,41 +79,55 @@ export function EditorToolbar({
           </Badge>
         </Link>
 
-        {/* File actions */}
-        {activeTab && (
-          <div className="flex items-center space-x-2 ml-6">
+        {/* Main actions */}
+        <div className="flex items-center space-x-2 ml-6">
+          <Link href="/dashboard/import">
             <Button
               variant="ghost"
               size="sm"
-              onClick={onSave}
-              className="h-8 text-xs"
-              disabled={!activeTab.unsaved}
-            >
-              <Save className="h-3 w-3 mr-1" />
-              Save
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={runPrompt}
               className="h-8 text-xs"
             >
-              <Play className="h-3 w-3 mr-1" />
-              Run
+              <Upload className="h-3 w-3 mr-1" />
+              Import
             </Button>
-            
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={exportContent}
-              className="h-8 text-xs"
-            >
-              <Download className="h-3 w-3 mr-1" />
-              Export
-            </Button>
-          </div>
-        )}
+          </Link>
+          
+          {/* File actions - only show when active tab */}
+          {activeTab && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onSave}
+                className="h-8 text-xs"
+                disabled={!activeTab.unsaved}
+              >
+                <Save className="h-3 w-3 mr-1" />
+                Save
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={runPrompt}
+                className="h-8 text-xs"
+              >
+                <Play className="h-3 w-3 mr-1" />
+                Run
+              </Button>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={exportContent}
+                className="h-8 text-xs"
+              >
+                <Download className="h-3 w-3 mr-1" />
+                Export
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Center - Current file info */}
@@ -164,6 +179,12 @@ export function EditorToolbar({
             <DropdownMenuItem asChild>
               <Link href="/dashboard">
                 Dashboard
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/import">
+                <Upload className="mr-2 h-4 w-4" />
+                Import
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
