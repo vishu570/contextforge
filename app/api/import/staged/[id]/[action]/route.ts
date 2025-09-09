@@ -28,63 +28,79 @@ export async function POST(
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
-    // Find the item
-    const item = await prisma.item.findFirst({
+    // Find the staged item
+    const stagedItem = await prisma.stagedItem.findFirst({
       where: {
         id: itemId,
-        userId: user.id,
       },
+      include: {
+        import: true
+      }
     });
 
-    if (!item) {
-      return NextResponse.json({ error: 'Item not found' }, { status: 404 });
+    if (!stagedItem) {
+      return NextResponse.json({ error: 'Staged item not found' }, { status: 404 });
+    }
+
+    // Verify the user owns this import
+    if (stagedItem.import.userId !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     if (action === 'approve') {
-      // Item is already in the database, just update any metadata if needed
-      await prisma.item.update({
-        where: { id: itemId },
+      // Create a real item in the main library
+      const newItem = await prisma.item.create({
         data: {
+          userId: user.id,
+          type: stagedItem.type,
+          name: stagedItem.name,
+          content: stagedItem.content,
+          format: stagedItem.format,
+          size: stagedItem.size,
+          sourceType: 'github',
+          sourceMetadata: stagedItem.metadata,
           metadata: JSON.stringify({
-            ...JSON.parse(item.metadata || '{}'),
+            importId: stagedItem.importId,
+            originalPath: stagedItem.originalPath,
             reviewStatus: 'approved',
             reviewedAt: new Date().toISOString(),
           }),
-        },
+        }
+      });
+
+      // Update staged item status
+      await prisma.stagedItem.update({
+        where: { id: itemId },
+        data: { status: 'approved' }
       });
 
       // Create audit log
       await prisma.auditLog.create({
         data: {
           userId: user.id,
-          itemId: itemId,
+          itemId: newItem.id,
           action: 'approve',
           entityType: 'item',
           metadata: JSON.stringify({
+            stagedItemId: itemId,
             reviewedAt: new Date().toISOString(),
           }),
         },
       });
     } else {
-      // Reject: mark as rejected or delete based on preferences
-      await prisma.item.update({
+      // Reject: update staged item status
+      await prisma.stagedItem.update({
         where: { id: itemId },
-        data: {
-          metadata: JSON.stringify({
-            ...JSON.parse(item.metadata || '{}'),
-            reviewStatus: 'rejected',
-            reviewedAt: new Date().toISOString(),
-          }),
-        },
+        data: { status: 'rejected' }
       });
 
       // Create audit log
       await prisma.auditLog.create({
         data: {
           userId: user.id,
-          itemId: itemId,
           action: 'reject',
-          entityType: 'item',
+          entityType: 'staged_item',
+          entityId: itemId,
           metadata: JSON.stringify({
             reviewedAt: new Date().toISOString(),
           }),

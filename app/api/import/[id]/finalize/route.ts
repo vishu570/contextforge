@@ -35,31 +35,31 @@ export async function POST(
       return NextResponse.json({ error: 'Import not found' }, { status: 404 });
     }
 
-    // Count approved and rejected items
-    const items = await prisma.item.findMany({
+    // Count approved and rejected staged items
+    const stagedItems = await prisma.stagedItem.findMany({
       where: {
-        userId: user.id,
-        createdAt: {
-          gte: importRecord.startedAt,
-        },
+        importId: importId,
       },
     });
 
-    let approvedCount = 0;
-    let rejectedCount = 0;
+    const approvedCount = stagedItems.filter(item => item.status === 'approved').length;
+    const rejectedCount = stagedItems.filter(item => item.status === 'rejected').length;
+    const pendingCount = stagedItems.filter(item => item.status === 'pending').length;
 
-    for (const item of items) {
-      const metadata = JSON.parse(item.metadata || '{}');
-      if (metadata.reviewStatus === 'approved') {
-        approvedCount++;
-      } else if (metadata.reviewStatus === 'rejected') {
-        rejectedCount++;
-        // Optionally delete rejected items
-        await prisma.item.delete({
-          where: { id: item.id },
-        });
-      }
+    // If there are still pending items, don't allow finalization
+    if (pendingCount > 0) {
+      return NextResponse.json({ 
+        error: `Cannot finalize import with ${pendingCount} pending items. Please approve or reject all items first.` 
+      }, { status: 400 });
     }
+
+    // Clean up rejected staged items (optional)
+    await prisma.stagedItem.deleteMany({
+      where: {
+        importId: importId,
+        status: 'rejected'
+      }
+    });
 
     // Update import record as completed
     await prisma.import.update({

@@ -211,31 +211,55 @@ model ItemCollection {
 }
 
 model Import {
-  id              String    @id @default(cuid())
+  id              String       @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   sourceId        String?
-  source          Source?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  status          String    // pending, processing, completed, failed
-  totalFiles      Int       @default(0)
-  processedFiles  Int       @default(0)
-  failedFiles     Int       @default(0)
-  metadata        String    @default("{}")
+  source          Source?      @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  status          String       // pending, processing, completed, failed
+  totalFiles      Int          @default(0)
+  processedFiles  Int          @default(0)
+  failedFiles     Int          @default(0)
+  metadata        String       @default("{}")
   errorLog        String?
   // Enhanced fields for import management
-  sourceType      String           // github_repo, github_file, local_folder, local_file
-  sourceUrl       String?          // Original URL or path
-  importSettings  String           @default("{}") // JSON import configuration
-  scheduledSync   Boolean          @default(false) // Whether this is a scheduled sync
-  syncFrequency   String?          // daily, weekly, monthly
-  lastSyncAt      DateTime?        // Last successful sync timestamp
-  syncStatus      String           @default("none") // none, syncing, synced, failed
-  startedAt       DateTime  @default(now())
+  sourceType      String       // github_repo, github_file, local_folder, local_file
+  sourceUrl       String?      // Original URL or path
+  importSettings  String       @default("{}") // JSON import configuration
+  scheduledSync   Boolean      @default(false) // Whether this is a scheduled sync
+  syncFrequency   String?      // daily, weekly, monthly
+  lastSyncAt      DateTime?    // Last successful sync timestamp
+  syncStatus      String       @default("none") // none, syncing, synced, failed
+  stagedItems     StagedItem[] // Items staged for review before being added to collection
+  startedAt       DateTime     @default(now())
   completedAt     DateTime?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime     @default(now())
 
   @@index([userId])
   @@index([status])
+}
+
+model StagedItem {
+  id              String   @id @default(cuid())
+  importId        String
+  import          Import   @relation(fields: [importId], references: [id], onDelete: Cascade)
+  name            String   // Original file/item name
+  originalPath    String?  // Original file path or URL
+  content         String   // File content or data
+  type            String   // prompt, agent, rule, template, snippet, other
+  format          String   // File extension or format (.md, .json, etc.)
+  size            Int?     // File size in bytes
+  metadata        String   @default("{}") // Additional metadata (GitHub info, etc.)
+  status          String   @default("pending") // pending, approved, rejected, imported
+  reviewedAt      DateTime?
+  reviewedBy      String?  // User ID who reviewed this item
+  importedItemId  String?  // Reference to created Item if approved and imported
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([importId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Optimization {

@@ -35,55 +35,35 @@ export async function GET(
       return NextResponse.json({ error: 'Import not found' }, { status: 404 });
     }
 
-    // For now, we'll simulate staged items by returning recently created items
-    // In a full implementation, you'd have a separate staging table
-    const recentItems = await prisma.item.findMany({
+    // Get staged items from the database
+    const stagedItemsRaw = await prisma.stagedItem.findMany({
       where: {
-        userId: user.id,
-        createdAt: {
-          gte: importRecord.startedAt,
-        },
-      },
-      include: {
-        tags: {
-          include: {
-            tag: true,
-          },
-        },
-        optimizations: {
-          where: {
-            status: 'suggested',
-          },
-        },
+        importId: importId,
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
 
-    // Convert to staged item format
-    const stagedItems = recentItems.map((item) => ({
+    // Convert to staged item format for the UI
+    const stagedItems = stagedItemsRaw.map((item) => ({
       id: item.id,
       name: item.name,
       content: item.content,
-      type: item.type,
+      type: item.type as 'prompt' | 'agent' | 'rule' | 'template' | 'snippet' | 'other',
       format: item.format,
       metadata: JSON.parse(item.metadata || '{}'),
-      author: item.author,
-      language: item.language,
-      targetModels: item.targetModels,
-      status: 'pending', // All items start as pending for review
+      originalPath: item.originalPath,
+      size: item.size,
+      status: item.status as 'pending' | 'approved' | 'rejected',
       classification: {
         type: item.type,
-        confidence: 0.8, // Mock confidence
+        confidence: 0.8,
         reasoning: `Classified as ${item.type} based on content analysis`,
       },
-      optimizations: item.optimizations.map((opt) => ({
-        targetModel: opt.targetModel,
-        optimizedContent: opt.optimizedContent,
-        suggestions: JSON.parse(opt.metadata || '{}').suggestions || [],
-        confidence: opt.confidence || 0.7,
-      })),
+      // Add empty arrays for optional properties that the UI expects
+      optimizations: [],
+      duplicates: [],
     }));
 
     return NextResponse.json({

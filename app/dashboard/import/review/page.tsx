@@ -434,24 +434,28 @@ function ImportReviewContent() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin" />
-        </div>
+      <div className="container mx-auto px-6 py-6">
+        <div className="flex items-center justify-center h-64">
+            <RefreshCw className="h-8 w-8 animate-spin" />
+          </div>
+      </div>
     );
   }
 
   if (!importId || stagedItems.length === 0) {
     return (
-      <div className="text-center py-12">
-          <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">No items to review</h3>
-          <p className="text-muted-foreground mb-4">
-            Import some files first to review them here
-          </p>
-          <Button onClick={() => router.push('/dashboard/import')}>
-            Go to Import
-          </Button>
-        </div>
+      <div className="container mx-auto px-6 py-6">
+        <div className="text-center py-12">
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No items to review</h3>
+            <p className="text-muted-foreground mb-4">
+              Import some files first to review them here
+            </p>
+            <Button onClick={() => router.push('/dashboard/import')}>
+              Go to Import
+            </Button>
+          </div>
+      </div>
     );
   }
 
@@ -460,7 +464,7 @@ function ImportReviewContent() {
   const rejectedCount = stagedItems.filter(item => item.status === 'rejected').length;
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-6 py-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Review Import</h1>

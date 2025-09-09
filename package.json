@@ -23,6 +23,7 @@
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.1",
     "@monaco-editor/react": "^4.7.0",
+    "@octokit/rest": "^22.0.0",
     "@playwright/test": "^1.54.2",
     "@prisma/client": "^6.15.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",

@@ -1,7 +1,7 @@
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { getUserFromToken } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -10,53 +10,32 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Settings, Key, User, Palette, Shield } from 'lucide-react';
+import { Settings, Key, User, Palette, Shield, ArrowLeft } from 'lucide-react';
 import { ThemeSettings } from '@/components/theme-settings';
 import { ApiKeyManagement } from '@/components/api-key-management';
 
-async function getUserSettings(userId: string) {
-  const [user, apiKeys] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-    }),
-    prisma.apiKey.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        name: true,
-        provider: true,
-        lastUsedAt: true,
-        createdAt: true,
-      },
-    }),
-  ]);
-
-  return { user, apiKeys };
-}
-
-export default async function SettingsPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('auth-token')?.value;
-
-  if (!token) {
-    redirect('/login');
-  }
-
-  const user = await getUserFromToken(token);
-  if (!user) {
-    redirect('/login');
-  }
-
-  const { user: userSettings, apiKeys } = await getUserSettings(user.id);
+export default function SettingsPage() {
+  const router = useRouter();
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push('/dashboard')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Button>
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
             Configure your account, API keys, and application preferences
           </p>
         </div>
+      </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList>
@@ -89,11 +68,11 @@ export default async function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Name</Label>
-                  <Input id="name" defaultValue={userSettings?.name || ''} />
+                  <Input id="name" placeholder="Enter your name" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue={userSettings?.email || ''} />
+                  <Input id="email" type="email" placeholder="Enter your email" />
                 </div>
                 <Separator />
                 <div className="flex justify-end">
@@ -112,7 +91,7 @@ export default async function SettingsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ApiKeyManagement initialApiKeys={apiKeys} />
+                <ApiKeyManagement initialApiKeys={[]} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -134,7 +113,7 @@ export default async function SettingsPage() {
                         How much AI automation to apply during imports
                       </p>
                     </div>
-                    <Select defaultValue={userSettings?.automationLevel || 'auto-suggest'}>
+                    <Select defaultValue="auto-suggest">
                       <SelectTrigger className="w-40">
                         <SelectValue />
                       </SelectTrigger>

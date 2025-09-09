@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '../../../../lib/db'
 import { getUserFromToken } from '../../../../lib/auth'
+import { GitHubProcessor } from '../../../../lib/import/github/realProcessor'
+import { updateProgress } from './progress/route'
 
 // Request validation schema with backward compatibility
 const githubImportRequestSchema = z.object({
@@ -95,193 +97,283 @@ export async function POST(request: NextRequest) {
     const repoOwner = pathParts[0]
     const repoName = pathParts[1]
 
-    // Simple GitHub repository existence check (without API call for now)
-    // In a real implementation, you would check GitHub API for repository existence
-    const knownPublicRepos = [
-      'microsoft/TypeScript',
-      'facebook/react',
-      'nodejs/node',
-      'owner/repo',
-      'owner/small-repo'
-    ]
-    const repoPath = `${repoOwner}/${repoName}`
-    
-    if (!knownPublicRepos.includes(repoPath) && !repoPath.startsWith('owner/')) {
-      // For testing purposes, we'll simulate a not found error for unknown repos
-      if (repoOwner === 'non-existent-owner' || repoName === 'non-existent-repo') {
-        return NextResponse.json(
-          { error: 'Repository not found' },
-          { status: 404 }
-        )
-      }
-    }
-
-    // Create source record
-    const source = await prisma.source.create({
-      data: {
-        type: 'github',
-        url: validatedData.url,
-        repoOwner,
-        repoName,
-        branch: validatedData.branch || 'main',
-        pathGlob: validatedData.filters?.paths?.join(',')
-      }
-    })
-
-    // Estimate import size based on repository
-    const estimatedFiles = estimateFileCount(repoPath, validatedData.filters)
-    const isLargeImport = estimatedFiles > 50
-
-    // Create import record
-    const importRecord = await prisma.import.create({
-      data: {
+    // Get user's GitHub API key from database
+    const githubApiKey = await prisma.apiKey.findFirst({
+      where: {
         userId: user.id,
-        sourceId: source.id,
-        status: isLargeImport ? 'processing' : 'pending',
-        totalFiles: 0,
-        processedFiles: 0,
-        failedFiles: 0,
-        sourceType: 'github_repo',
-        sourceUrl: validatedData.url,
-        importSettings: JSON.stringify({
-          filters: validatedData.filters,
-          autoCategorie: validatedData.autoCategorie,
-          collectionId: validatedData.collectionId
-        }),
-        metadata: JSON.stringify({
-          repoOwner,
-          repoName,
-          estimatedFiles
-        })
+        provider: 'github'
       }
     })
 
-    if (isLargeImport) {
-      // Queue for background processing (202 response)
-      const estimatedTime = Math.ceil(estimatedFiles / 10) // 10 files per second estimate
-      
-      return NextResponse.json({
-        importId: importRecord.id,
-        status: 'queued',
-        estimatedFiles,
-        estimatedTime
-      }, { status: 202 })
-    } else {
-      // Process immediately for small repositories (200 response)
-      const processedItems = await processSmallImport(importRecord, validatedData, user.id)
-      
-      await prisma.import.update({
-        where: { id: importRecord.id },
-        data: {
-          status: 'completed',
-          totalFiles: processedItems.length,
-          processedFiles: processedItems.length,
-          completedAt: new Date()
-        }
-      })
-
-      return NextResponse.json({
-        importId: importRecord.id,
-        status: 'completed',
-        totalFiles: processedItems.length,
-        processedFiles: processedItems.length,
-        failedFiles: 0,
-        items: processedItems
-      }, { status: 200 })
-    }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const fieldErrors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
+    if (!githubApiKey) {
       return NextResponse.json(
-        { error: `Validation failed: ${fieldErrors.join(', ')}` },
+        { error: 'GitHub API key not found. Please add a GitHub token in Settings.' },
         { status: 400 }
       )
     }
 
-    // Handle rate limiting errors
-    if (error.message?.includes('rate limit') || error.status === 429) {
+    // Decrypt the API key
+    const { decryptApiKey } = await import('@/lib/utils')
+    const decryptedToken = decryptApiKey(githubApiKey.encryptedKey)
+
+    // Initialize GitHub processor with user's token
+    const githubProcessor = new GitHubProcessor(decryptedToken)
+
+    let importRecord: any = null
+
+    try {
+      // Create import record first to get importId for progress tracking
+      const source = await prisma.source.create({
+        data: {
+          type: 'github',
+          url: validatedData.url,
+          repoOwner,
+          repoName,
+          branch: validatedData.branch || 'main',
+          pathGlob: validatedData.filters?.paths?.join(',')
+        }
+      })
+
+      importRecord = await prisma.import.create({
+        data: {
+          userId: user.id,
+          sourceId: source.id,
+          status: 'processing',
+          totalFiles: 0,
+          processedFiles: 0,
+          failedFiles: 0,
+          sourceType: 'github_repo',
+          sourceUrl: validatedData.url,
+          importSettings: JSON.stringify({
+            filters: validatedData.filters,
+            autoCategorie: validatedData.autoCategorie,
+            collectionId: validatedData.collectionId
+          }),
+          metadata: JSON.stringify({
+            repoOwner,
+            repoName,
+            branch: validatedData.branch
+          })
+        }
+      })
+
+      // Initialize progress tracking
+      updateProgress(importRecord.id, {
+        status: 'starting',
+        progress: 0,
+        message: `Starting import from ${repoOwner}/${repoName}`,
+        totalFiles: 0,
+        processedFiles: 0
+      })
+
+      // Import repository using real GitHub API with progress callback
+      const importResult = await githubProcessor.importRepository({
+        url: validatedData.url,
+        branch: validatedData.branch,
+        fileExtensions: validatedData.filters?.fileExtensions,
+        excludePaths: validatedData.filters?.excludePaths,
+      }, (progress) => {
+        // Progress callback from GitHubProcessor
+        updateProgress(importRecord.id, {
+          status: 'processing',
+          progress: Math.round((progress.processed / progress.total) * 100),
+          message: progress.message,
+          totalFiles: progress.total,
+          processedFiles: progress.processed,
+          currentFile: progress.currentFile
+        })
+      })
+
+      console.log(`GitHub import result:`, {
+        total: importResult.total,
+        imported: importResult.imported,
+        failed: importResult.failed,
+        filesCount: importResult.files.length
+      })
+
+      // Update import record with final results
+      await prisma.import.update({
+        where: { id: importRecord.id },
+        data: {
+          status: 'completed',
+          totalFiles: importResult.total,
+          processedFiles: importResult.imported,
+          failedFiles: importResult.failed,
+          metadata: JSON.stringify({
+            repoOwner,
+            repoName,
+            branch: validatedData.branch,
+            errors: importResult.errors
+          }),
+          completedAt: new Date()
+        }
+      })
+
+      // Update progress for staging phase
+      updateProgress(importRecord.id, {
+        status: 'processing',
+        progress: 90,
+        message: 'Creating staged items for review...',
+        totalFiles: importResult.total,
+        processedFiles: importResult.imported
+      })
+
+      // Create staged items for review
+      const stagedItems = []
+      for (let i = 0; i < importResult.files.length; i++) {
+        const file = importResult.files[i]
+        try {
+          const stagedItem = await prisma.stagedItem.create({
+            data: {
+              importId: importRecord.id,
+              name: file.name,
+              originalPath: file.path,
+              content: file.content,
+              type: file.type as any,
+              format: `.${file.name.split('.').pop()}` || '.txt',
+              size: file.size,
+              metadata: JSON.stringify({
+                downloadUrl: file.downloadUrl,
+                githubPath: file.path,
+                repository: `${repoOwner}/${repoName}`,
+                branch: validatedData.branch
+              }),
+              status: 'pending'
+            }
+          })
+          stagedItems.push(stagedItem)
+
+          // Update progress during staging
+          if (i % 10 === 0 || i === importResult.files.length - 1) {
+            const stagingProgress = 90 + Math.round((i / importResult.files.length) * 10)
+            updateProgress(importRecord.id, {
+              progress: stagingProgress,
+              message: `Staging items for review... (${i + 1}/${importResult.files.length})`
+            })
+          }
+        } catch (error) {
+          console.error(`Failed to create staged item for ${file.name}:`, error)
+        }
+      }
+
+      console.log(`Created ${stagedItems.length} staged items for review`)
+
+      // Final progress update
+      updateProgress(importRecord.id, {
+        status: 'completed',
+        progress: 100,
+        message: `Import completed! ${stagedItems.length} items ready for review`,
+        totalFiles: importResult.total,
+        processedFiles: importResult.imported
+      })
+
+      // Return immediate success response with details
+      return NextResponse.json({
+        importId: importRecord.id,
+        status: 'completed',
+        total: importResult.total,
+        imported: importResult.imported,
+        failed: importResult.failed,
+        stagedItems: stagedItems.length,
+        errors: importResult.errors.length > 0 ? importResult.errors.slice(0, 5) : undefined,
+        repository: `${repoOwner}/${repoName}`,
+        branch: validatedData.branch
+      })
+
+    } catch (githubError) {
+      console.error('GitHub import error:', githubError)
+      
+      const errorMessage = githubError instanceof Error ? githubError.message : 'Failed to import from GitHub'
+      
+      // Update progress with error if we have an importRecord
+      if (importRecord) {
+        updateProgress(importRecord.id, {
+          status: 'failed',
+          progress: 0,
+          message: `Import failed: ${errorMessage}`,
+          errors: [errorMessage]
+        })
+
+        // Update import record with failure
+        await prisma.import.update({
+          where: { id: importRecord.id },
+          data: {
+            status: 'failed',
+            errorLog: errorMessage,
+            completedAt: new Date(),
+            metadata: JSON.stringify({
+              repoOwner,
+              repoName,
+              branch: validatedData.branch,
+              error: errorMessage
+            })
+          }
+        })
+
+        return NextResponse.json(
+          { 
+            error: errorMessage,
+            importId: importRecord.id
+          },
+          { status: 400 }
+        )
+      } else {
+        // Create failed import record for tracking if no importRecord exists
+        const failedImportRecord = await prisma.import.create({
+          data: {
+            userId: user.id,
+            sourceId: null,
+            status: 'failed',
+            totalFiles: 0,
+            processedFiles: 0,
+            failedFiles: 0,
+            sourceType: 'github_repo',
+            sourceUrl: validatedData.url,
+            errorLog: errorMessage,
+            importSettings: JSON.stringify({
+              filters: validatedData.filters,
+              autoCategorie: validatedData.autoCategorie,
+              collectionId: validatedData.collectionId
+            }),
+            metadata: JSON.stringify({
+              repoOwner,
+              repoName,
+              error: errorMessage
+            }),
+            completedAt: new Date()
+          }
+        })
+
+        updateProgress(failedImportRecord.id, {
+          status: 'failed',
+          progress: 0,
+          message: `Import failed: ${errorMessage}`,
+          errors: [errorMessage]
+        })
+
+        return NextResponse.json(
+          { 
+            error: errorMessage,
+            importId: failedImportRecord.id
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+  } catch (error) {
+    console.error('Import API error:', error)
+    
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'GitHub API rate limit exceeded. Please try again later.' },
-        { status: 429 }
+        { error: 'Invalid request data', details: error.errors },
+        { status: 400 }
       )
     }
 
-    console.error('GitHub import API error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error instanceof Error ? error.message : 'Import failed' },
       { status: 500 }
     )
   }
-}
-
-function estimateFileCount(repoPath: string, filters?: any): number {
-  // Simple estimation based on known repositories for testing
-  const estimates = {
-    'microsoft/TypeScript': 1500,
-    'facebook/react': 800,
-    'nodejs/node': 2000,
-    'owner/small-repo': 15,
-    'owner/repo': 100
-  }
-  
-  return estimates[repoPath] || 50
-}
-
-async function processSmallImport(importRecord: any, validatedData: any, userId: string) {
-  // Simulate processing a small repository
-  const mockItems = []
-  const fileCount = Math.min(20, estimateFileCount(importRecord.metadata))
-  
-  for (let i = 1; i <= fileCount; i++) {
-    const item = await prisma.item.create({
-      data: {
-        userId,
-        type: 'snippet',
-        name: `Imported file ${i}`,
-        content: `# Sample content from GitHub import\n\nThis is mock content for file ${i}`,
-        format: '.md',
-        sourceId: importRecord.sourceId,
-        sourceType: 'github',
-        sourceMetadata: JSON.stringify({
-          path: `src/file${i}.md`,
-          url: `${validatedData.url}/blob/main/src/file${i}.md`
-        }),
-        metadata: JSON.stringify({
-          importId: importRecord.id,
-          processed: new Date().toISOString()
-        })
-      }
-    })
-
-    // Add to collection if specified
-    if (validatedData.collectionId) {
-      await prisma.itemCollection.create({
-        data: {
-          itemId: item.id,
-          collectionId: validatedData.collectionId,
-          position: i
-        }
-      })
-    }
-
-    mockItems.push({
-      id: item.id,
-      name: item.name,
-      type: item.type,
-      path: `src/file${i}.md`
-    })
-  }
-
-  return mockItems
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    }
-  })
 }

@@ -59,7 +59,7 @@ export function validateApiKey(provider: string, apiKey: string): boolean {
     case "openai":
       return apiKey.startsWith("sk-") && apiKey.length > 20
     case "anthropic":
-      return apiKey.startsWith("sk-ant-") && apiKey.length > 20
+      return (apiKey.startsWith("sk-ant-") || apiKey.startsWith("sk-")) && apiKey.length > 20
     case "gemini":
       return apiKey.length > 20 // Google API keys vary in format
     case "github":

@@ -59,6 +59,11 @@ export function ApiKeyManagement({ initialApiKeys }: ApiKeyManagementProps) {
     }
   }
 
+  // Load API keys on component mount
+  useEffect(() => {
+    refreshApiKeys()
+  }, [])
+
   const handleAddKey = (provider: string) => {
     // Check if key already exists for this provider
     const existingKey = apiKeys.find(key => key.provider === provider)

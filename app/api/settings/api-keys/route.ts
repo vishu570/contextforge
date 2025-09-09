@@ -92,34 +92,47 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    if (existingKey) {
-      return NextResponse.json(
-        { error: `API key for ${provider} already exists. Please update the existing key instead.` },
-        { status: 409 }
-      )
-    }
-
     // Encrypt the API key
     const encryptedKey = encryptApiKey(apiKey)
 
-    // Save to database
-    const newApiKey = await prisma.apiKey.create({
-      data: {
-        userId: user.id,
-        provider,
-        name,
-        encryptedKey,
-      },
-      select: {
-        id: true,
-        name: true,
-        provider: true,
-        lastUsedAt: true,
-        createdAt: true,
-      },
-    })
+    let apiKeyResult;
 
-    return NextResponse.json({ apiKey: newApiKey }, { status: 201 })
+    if (existingKey) {
+      // Update existing key
+      apiKeyResult = await prisma.apiKey.update({
+        where: { id: existingKey.id },
+        data: {
+          name,
+          encryptedKey,
+        },
+        select: {
+          id: true,
+          name: true,
+          provider: true,
+          lastUsedAt: true,
+          createdAt: true,
+        },
+      })
+    } else {
+      // Create new key
+      apiKeyResult = await prisma.apiKey.create({
+        data: {
+          userId: user.id,
+          provider,
+          name,
+          encryptedKey,
+        },
+        select: {
+          id: true,
+          name: true,
+          provider: true,
+          lastUsedAt: true,
+          createdAt: true,
+        },
+      })
+    }
+
+    return NextResponse.json({ apiKey: apiKeyResult }, { status: existingKey ? 200 : 201 })
   } catch (error) {
     console.error("Error creating API key:", error)
     return NextResponse.json(
