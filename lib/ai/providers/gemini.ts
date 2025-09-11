@@ -182,15 +182,30 @@ export class GeminiProvider implements AIProvider {
   ): string {
     let prompt = `Analyze the following content and suggest ${
       options.maxSuggestions || 5
-    } appropriate categories:\n\n${content}\n\n`
+    } appropriate, specific categories for organization and discovery.
+
+Focus on creating meaningful, searchable tags that describe:
+- The specific purpose/functionality (e.g., "backend-developer", "api-designer", "prompt-engineer")
+- The domain/specialization (e.g., "typescript", "react", "python", "devops")
+- The skill level if applicable (e.g., "beginner", "advanced", "expert")
+- The content type (e.g., "subagent", "template", "rule", "guide", "tool")
+
+Content to analyze:
+${content}
+
+`
 
     if (options.existingCategories?.length) {
-      prompt += `Consider these existing categories: ${options.existingCategories.join(
+      prompt += `Consider reusing these existing categories when appropriate: ${options.existingCategories.join(
         ", "
       )}\n\n`
     }
 
-    prompt += "Return only a JSON array of category names."
+    prompt += `Return only a JSON array of specific, descriptive category names. 
+Examples of good tags: ["claude-subagent", "backend-specialist", "typescript-expert", "api-design", "development-tool"]
+Examples of poor tags: ["ai", "code", "file", "text", "document"]
+
+Respond with just the JSON array:`
     return prompt
   }
 

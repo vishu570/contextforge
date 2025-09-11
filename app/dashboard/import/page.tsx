@@ -144,6 +144,8 @@ export default function ImportPage() {
       }
 
       const responseData = await response.json();
+      console.log('GitHub import response:', responseData);
+      console.log('Import ID from response:', responseData.importId);
 
       // Start listening to progress events
       if (responseData.importId) {
@@ -151,6 +153,7 @@ export default function ImportPage() {
 
         // Wait a short moment to ensure the backend has started processing
         setTimeout(() => {
+          console.log(`Attempting to connect to SSE for ${responseData.importId}`);
           const eventSource = new EventSource(`/api/import/github/progress?importId=${responseData.importId}`);
           let retryCount = 0;
           const maxRetries = 3;

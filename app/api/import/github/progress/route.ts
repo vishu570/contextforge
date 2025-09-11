@@ -6,6 +6,8 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const importId = searchParams.get("importId")
 
+  console.log(`SSE connection requested for importId: ${importId}`)
+
   if (!importId) {
     return NextResponse.json({ error: "Import ID required" }, { status: 400 })
   }
@@ -38,7 +40,11 @@ export async function GET(request: NextRequest) {
         if (isClosed) return
 
         const progress = getProgress(importId)
-        console.log(`SSE sending progress for ${importId}:`, progress)
+        console.log(`SSE checking progress for ${importId}:`, progress)
+
+        // Debug: Check if we have any progress stored at all
+        const { progressStore } = require("@/lib/import/progress")
+        console.log(`All stored progress:`, Array.from(progressStore.keys()))
 
         if (progress) {
           const data = `data: ${JSON.stringify(progress)}\n\n`

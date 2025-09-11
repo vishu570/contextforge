@@ -5,77 +5,179 @@ import { getUserFromToken } from "../../../../lib/auth"
 import { prisma } from "../../../../lib/db"
 import { GitHubProcessor } from "../../../../lib/import/github/realProcessor"
 
-// Helper function to extract basic tags from content using rule-based approach
+// Helper function to extract better rule-based tags for subagents and development content
 function extractBasicTags(content: string, filename: string): string[] {
   const tags: Set<string> = new Set()
   const lowerContent = content.toLowerCase()
   const lowerFilename = filename.toLowerCase()
 
-  // Technology and framework tags
-  if (lowerContent.includes("react") || lowerContent.includes("jsx"))
-    tags.add("react")
-  if (lowerContent.includes("vue") || lowerContent.includes("vuejs"))
-    tags.add("vue")
-  if (lowerContent.includes("angular")) tags.add("angular")
-  if (lowerContent.includes("typescript") || lowerFilename.includes(".ts"))
-    tags.add("typescript")
-  if (lowerContent.includes("javascript") || lowerFilename.includes(".js"))
-    tags.add("javascript")
-  if (lowerContent.includes("python") || lowerFilename.includes(".py"))
-    tags.add("python")
-  if (lowerContent.includes("nodejs") || lowerContent.includes("node.js"))
-    tags.add("nodejs")
+  // Claude subagent specific patterns
+  if (lowerContent.includes("subagent") || lowerContent.includes("claude")) {
+    tags.add("claude-subagent")
+  }
 
-  // Purpose-based tags
-  if (lowerContent.includes("api") || lowerContent.includes("endpoint"))
-    tags.add("api")
-  if (lowerContent.includes("database") || lowerContent.includes("sql"))
-    tags.add("database")
-  if (lowerContent.includes("authentication") || lowerContent.includes("auth"))
-    tags.add("authentication")
-  if (lowerContent.includes("testing") || lowerContent.includes("test"))
-    tags.add("testing")
-  if (lowerContent.includes("documentation") || lowerContent.includes("docs"))
-    tags.add("documentation")
-  if (lowerContent.includes("deployment") || lowerContent.includes("deploy"))
-    tags.add("deployment")
-
-  // AI/ML related tags
-  if (lowerContent.includes("openai") || lowerContent.includes("gpt"))
-    tags.add("openai")
-  if (lowerContent.includes("anthropic") || lowerContent.includes("claude"))
-    tags.add("anthropic")
+  // Developer role-based tags from filename and content
   if (
-    lowerContent.includes("prompt engineering") ||
-    lowerContent.includes("prompt")
-  )
-    tags.add("prompt-engineering")
-  if (lowerContent.includes("machine learning") || lowerContent.includes("ml"))
+    lowerFilename.includes("backend") ||
+    lowerContent.includes("backend developer")
+  ) {
+    tags.add("backend-developer")
+  }
+  if (
+    lowerFilename.includes("frontend") ||
+    lowerContent.includes("frontend developer")
+  ) {
+    tags.add("frontend-developer")
+  }
+  if (
+    lowerFilename.includes("fullstack") ||
+    lowerContent.includes("fullstack developer")
+  ) {
+    tags.add("fullstack-developer")
+  }
+  if (
+    lowerFilename.includes("api-designer") ||
+    lowerContent.includes("api designer")
+  ) {
+    tags.add("api-designer")
+  }
+  if (
+    lowerFilename.includes("devops") ||
+    lowerContent.includes("devops engineer")
+  ) {
+    tags.add("devops-engineer")
+  }
+  if (
+    lowerFilename.includes("mobile") ||
+    lowerContent.includes("mobile developer")
+  ) {
+    tags.add("mobile-developer")
+  }
+  if (
+    lowerFilename.includes("ui-designer") ||
+    lowerContent.includes("ui designer")
+  ) {
+    tags.add("ui-designer")
+  }
+  if (
+    lowerFilename.includes("data-scientist") ||
+    lowerContent.includes("data scientist")
+  ) {
+    tags.add("data-scientist")
+  }
+  if (
+    lowerFilename.includes("security") ||
+    lowerContent.includes("security specialist")
+  ) {
+    tags.add("security-specialist")
+  }
+
+  // Technology specialist tags
+  if (
+    lowerFilename.includes("typescript") ||
+    lowerContent.includes("typescript specialist")
+  ) {
+    tags.add("typescript-specialist")
+  }
+  if (
+    lowerFilename.includes("python") ||
+    lowerContent.includes("python specialist")
+  ) {
+    tags.add("python-specialist")
+  }
+  if (
+    lowerFilename.includes("react") ||
+    lowerContent.includes("react specialist")
+  ) {
+    tags.add("react-specialist")
+  }
+  if (
+    lowerFilename.includes("vue") ||
+    lowerContent.includes("vue specialist")
+  ) {
+    tags.add("vue-specialist")
+  }
+  if (
+    lowerFilename.includes("golang") ||
+    lowerContent.includes("go specialist")
+  ) {
+    tags.add("golang-specialist")
+  }
+
+  // Technology framework tags
+  if (lowerContent.includes("next.js") || lowerContent.includes("nextjs")) {
+    tags.add("nextjs")
+  }
+  if (lowerContent.includes("express") || lowerContent.includes("express.js")) {
+    tags.add("express")
+  }
+  if (lowerContent.includes("graphql")) {
+    tags.add("graphql")
+  }
+  if (lowerContent.includes("prisma")) {
+    tags.add("prisma")
+  }
+  if (lowerContent.includes("docker")) {
+    tags.add("docker")
+  }
+  if (lowerContent.includes("kubernetes")) {
+    tags.add("kubernetes")
+  }
+
+  // Development domain tags
+  if (
+    lowerContent.includes("microservices") ||
+    lowerContent.includes("microservice")
+  ) {
+    tags.add("microservices")
+  }
+  if (
+    lowerContent.includes("machine learning") ||
+    lowerContent.includes("ml engineer")
+  ) {
     tags.add("machine-learning")
+  }
   if (
-    lowerContent.includes("artificial intelligence") ||
-    lowerContent.includes("ai")
-  )
-    tags.add("ai")
+    lowerContent.includes("prompt engineer") ||
+    lowerContent.includes("prompt engineering")
+  ) {
+    tags.add("prompt-engineer")
+  }
+  if (lowerContent.includes("database") || lowerContent.includes("sql")) {
+    tags.add("database-specialist")
+  }
 
-  // Content type tags
-  if (lowerFilename.includes("readme")) tags.add("readme")
-  if (
-    lowerFilename.includes("config") ||
-    lowerFilename.includes("configuration")
-  )
-    tags.add("configuration")
-  if (lowerFilename.includes("example") || lowerFilename.includes("sample"))
+  // Content type classification
+  if (lowerContent.includes("agent") && !tags.has("claude-subagent")) {
+    tags.add("ai-agent")
+  }
+  if (lowerContent.includes("template") || lowerFilename.includes("template")) {
+    tags.add("template")
+  }
+  if (lowerContent.includes("example") || lowerFilename.includes("example")) {
     tags.add("example")
-  if (lowerFilename.includes("template")) tags.add("template")
+  }
+  if (lowerContent.includes("guide") || lowerContent.includes("tutorial")) {
+    tags.add("guide")
+  }
+  if (lowerFilename.endsWith(".md") && !lowerFilename.includes("readme")) {
+    tags.add("documentation")
+  }
 
-  // File format tags
-  if (lowerFilename.endsWith(".md")) tags.add("markdown")
-  if (lowerFilename.endsWith(".json")) tags.add("json")
-  if (lowerFilename.endsWith(".yaml") || lowerFilename.endsWith(".yml"))
-    tags.add("yaml")
+  // Generic technology tags (fallback)
+  if (tags.size < 3) {
+    if (lowerContent.includes("javascript") || lowerFilename.includes(".js")) {
+      tags.add("javascript")
+    }
+    if (lowerContent.includes("typescript") || lowerFilename.includes(".ts")) {
+      tags.add("typescript")
+    }
+    if (lowerContent.includes("python") || lowerFilename.includes(".py")) {
+      tags.add("python")
+    }
+  }
 
-  return Array.from(tags).slice(0, 5) // Limit to 5 tags
+  return Array.from(tags).slice(0, 6) // Return up to 6 tags
 }
 
 // Request validation schema with backward compatibility
@@ -240,7 +342,15 @@ export async function POST(request: NextRequest) {
       const isIncrementalSync =
         !trackingInfo.isFirstSync && trackingInfo.lastCommitSha
 
-      if (isIncrementalSync) {
+      console.log(
+        `Tracking info - isFirstSync: ${trackingInfo.isFirstSync}, lastCommitSha: ${trackingInfo.lastCommitSha}`
+      )
+      console.log(`Is incremental sync: ${isIncrementalSync}`)
+
+      // TEMPORARY: Force fresh import by skipping incremental logic
+      const skipIncrementalCheck = true
+
+      if (isIncrementalSync && !skipIncrementalCheck) {
         // Check for changes since last sync
         const changes = await repoTracker.getFileChangesSince(
           repoOwner,
@@ -250,8 +360,11 @@ export async function POST(request: NextRequest) {
           validatedData.filters?.fileExtensions
         )
 
+        console.log(`Changes detected: ${changes.hasChanges}`)
+
         if (!changes.hasChanges) {
           // No changes detected, return early
+          console.log("No changes detected, returning early")
           return NextResponse.json({
             importId: null,
             status: "up_to_date",
@@ -300,6 +413,13 @@ export async function POST(request: NextRequest) {
       })
 
       // Import repository using real GitHub API with progress callback
+      console.log("About to call githubProcessor.importRepository with:", {
+        url: validatedData.url,
+        branch: validatedData.branch,
+        fileExtensions: validatedData.filters?.fileExtensions,
+        excludePaths: validatedData.filters?.excludePaths,
+      })
+
       const importResult = await githubProcessor.importRepository(
         {
           url: validatedData.url,
@@ -414,8 +534,30 @@ export async function POST(request: NextRequest) {
 
           if (aiAvailable && validatedData.autoCategorie !== false) {
             try {
-              // Get AI-suggested tags
-              suggestedTags = await aiClient.categorize(file.content, {
+              // Provide context for better AI categorization
+              const contextualizedContent = `
+Repository: ${repoOwner}/${repoName}
+File: ${file.name}
+Path: ${file.path || "N/A"}
+Type: ${file.type}
+
+Content:
+${file.content}
+
+Context: This is from a GitHub repository import. The repository appears to be focused on ${
+                repoName.includes("claude") ||
+                repoName.includes("subagent") ||
+                repoName.includes("agent")
+                  ? "Claude AI subagents and development tools"
+                  : repoName.includes("prompt")
+                  ? "AI prompts and templates"
+                  : repoName.includes("rule")
+                  ? "coding rules and best practices"
+                  : "development resources and tools"
+              }.`
+
+              // Get AI-suggested tags with enhanced context
+              suggestedTags = await aiClient.categorize(contextualizedContent, {
                 maxSuggestions: 5,
                 existingCategories: existingCategories.map((c) => c.name),
               })
@@ -526,6 +668,8 @@ export async function POST(request: NextRequest) {
       })
 
       // Return immediate success response with details
+      console.log(`Returning import response with importId: ${importRecord.id}`)
+
       return NextResponse.json({
         importId: importRecord.id,
         status: "completed",
