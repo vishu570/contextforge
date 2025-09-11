@@ -96,11 +96,12 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const url = new URL(request.url);

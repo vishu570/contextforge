@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
           const validatedData = DuplicateDetectionSchema.parse(body);
           
           await optimizationPipeline.runDuplicateDetection(
-            session.user.id,
+            user.id,
             validatedData.collectionId
           );
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
           await optimizationPipeline.runSimilarityScoring(
             validatedData.sourceItemId,
             validatedData.targetItemIds,
-            session.user.id
+            user.id
           );
 
           return NextResponse.json({

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user-specific job stats
-    const userJobs = await jobQueue.getUserJobs(session.user.id, 100);
+    const userJobs = await jobQueue.getUserJobs(user.id, 100);
     
     const userStats = {
       total: userJobs.length,

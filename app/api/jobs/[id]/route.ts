@@ -23,7 +23,7 @@ export async function GET(
     }
 
     // Check if user owns this job
-    if (job.data.userId !== session.user.id) {
+    if (job.data.userId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -65,7 +65,7 @@ export async function DELETE(
     }
 
     // Check if user owns this job
-    if (job.data.userId !== session.user.id) {
+    if (job.data.userId !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

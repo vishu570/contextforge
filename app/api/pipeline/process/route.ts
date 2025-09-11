@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
           const validatedData = ProcessItemSchema.parse(body);
           
           await optimizationPipeline.processItem(validatedData.itemId, {
-            userId: session.user.id,
+            userId: user.id,
             itemId: validatedData.itemId,
             forceReprocess: validatedData.forceReprocess,
             targetModels: validatedData.targetModels,
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
           
           // Start batch processing in background
           optimizationPipeline.processBatch(validatedData.itemIds, {
-            userId: session.user.id,
+            userId: user.id,
             forceReprocess: validatedData.forceReprocess,
             targetModels: validatedData.targetModels,
             skipIfOptimized: validatedData.skipIfOptimized,
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
                   collectionId: validatedData.collectionId,
                 },
               },
-              userId: session.user.id,
+              userId: user.id,
             },
             select: { id: true },
           });
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
 
           // Start collection processing in background
           optimizationPipeline.processBatch(itemIds, {
-            userId: session.user.id,
+            userId: user.id,
             forceReprocess: validatedData.forceReprocess,
             targetModels: validatedData.targetModels,
             skipIfOptimized: validatedData.skipIfOptimized,

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const optimizer = new ModelOptimizer(session.user.id);
+    const optimizer = new ModelOptimizer(user.id);
     const estimates = await optimizer.getCostEstimates(content, models);
 
     return NextResponse.json({
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const optimizer = new ModelOptimizer(session.user.id);
+    const optimizer = new ModelOptimizer(user.id);
     const recommendations = await optimizer.getModelRecommendations(content, {
       maxCost: maxCost > 0 ? maxCost : undefined,
       prioritizeQuality,

@@ -31,6 +31,7 @@ model User {
   optimizationResults OptimizationResult[]
   optimizationQueue OptimizationQueue[]
   itemCategories    ItemCategory[]
+  categories        Category[]
   settings          String       @default("{}")
   automationLevel   String       @default("auto-suggest")
   preferences       String       @default("{}")
@@ -674,15 +675,34 @@ model OptimizationQueue {
   @@index([createdAt])
 }
 
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#3b82f6")
+  icon        String   @default("folder")
+  parentId    String?
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Category[] @relation("CategoryHierarchy")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       ItemCategory[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([name, userId])
+}
+
 model ItemCategory {
   id              String   @id @default(cuid())
   userId          String
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   itemId          String
   item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  categoryName    String   // AI-suggested or user-assigned category
-  confidence      Float    // AI confidence score 0.0-1.0 (1.0 for manual)
-  source          String   // ai_suggested, user_assigned, imported
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  confidence      Float    @default(1.0) // AI confidence score 0.0-1.0 (1.0 for manual)
+  source          String   @default("user_assigned") // ai_suggested, user_assigned, imported
   aiProvider      String?  // Which AI suggested this category
   reasoning       String?  // AI explanation for categorization
   isApproved      Boolean  @default(false) // Whether user approved this category
@@ -690,10 +710,10 @@ model ItemCategory {
   approvedAt      DateTime?
   createdAt       DateTime @default(now())
 
-  @@unique([itemId, categoryName])
+  @@unique([itemId, categoryId])
   @@index([userId])
   @@index([itemId])
-  @@index([categoryName])
+  @@index([categoryId])
   @@index([confidence])
-  @@index([isApproved])
+  @@index([source])
 }

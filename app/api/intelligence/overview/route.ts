@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const coordinator = new IntelligenceCoordinator(session.user.id);
+    const coordinator = new IntelligenceCoordinator(user.id);
     const overview = await coordinator.getIntelligenceOverview();
 
     return NextResponse.json({
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action, options = {} } = body;
 
-    const coordinator = new IntelligenceCoordinator(session.user.id);
+    const coordinator = new IntelligenceCoordinator(user.id);
 
     switch (action) {
       case 'discover_and_organize':

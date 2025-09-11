@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { Upload, Github, Link2, Loader2, FileText, X, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ArrowLeft, CheckCircle, FileText, Github, Link2, Loader2, Upload, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function ImportPage() {
   const router = useRouter();
@@ -91,7 +91,7 @@ export default function ImportPage() {
       const responseData = await response.json();
       setSuccess(`Successfully imported ${responseData.imported} items from ${files.length} files`);
       setFiles([]);
-      
+
       setTimeout(() => {
         router.push(`/dashboard/import/review?importId=${responseData.importId}`);
       }, 2000);
@@ -144,19 +144,19 @@ export default function ImportPage() {
       }
 
       const responseData = await response.json();
-      
+
       // Start listening to progress events
       if (responseData.importId) {
         const eventSource = new EventSource(`/api/import/github/progress?importId=${responseData.importId}`);
-        
+
         eventSource.onmessage = (event) => {
           const progress = JSON.parse(event.data);
           setImportProgress(progress);
-          
+
           if (progress.status === 'completed') {
             eventSource.close();
             setIsImporting(false);
-            
+
             // Show success message
             let successMessage = `Successfully imported ${progress.processedFiles} items`;
             if (progress.totalFiles > 0) {
@@ -164,7 +164,7 @@ export default function ImportPage() {
             }
             setSuccess(successMessage);
             setGithubUrl('');
-            
+
             setTimeout(() => {
               router.push(`/dashboard/import/review?importId=${responseData.importId}`);
             }, 2000);
@@ -174,7 +174,7 @@ export default function ImportPage() {
             setError(progress.message);
           }
         };
-        
+
         eventSource.onerror = () => {
           eventSource.close();
           setIsImporting(false);
@@ -185,7 +185,7 @@ export default function ImportPage() {
         setIsImporting(false);
         setSuccess(`Import completed`);
         setGithubUrl('');
-        
+
         setTimeout(() => {
           router.push(`/dashboard/import/review?importId=${responseData.importId}`);
         }, 2000);
@@ -222,7 +222,7 @@ export default function ImportPage() {
       const responseData = await response.json();
       setSuccess(`Successfully imported content from URL`);
       setWebUrl('');
-      
+
       setTimeout(() => {
         router.push(`/dashboard/import/review?importId=${responseData.importId}`);
       }, 2000);
@@ -322,9 +322,8 @@ export default function ImportPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div
-                className={`border-2 border-dashed rounded-lg p-8 text-center ${
-                  dragActive ? 'border-primary bg-accent' : 'border-border'
-                }`}
+                className={`border-2 border-dashed rounded-lg p-8 text-center ${dragActive ? 'border-primary bg-accent' : 'border-border'
+                  }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
@@ -448,7 +447,7 @@ export default function ImportPage() {
                   <ul className="list-disc list-inside ml-2 space-y-1">
                     <li><code>**/*.md</code> - All Markdown files</li>
                     <li><code>prompts/**/*</code> - Files in prompts directory</li>
-                    <li><code>*.{`{json,yaml}`}</code> - JSON and YAML in root</li>
+                    <li><code>{`*.{json,yaml}`}</code> - JSON and YAML in root</li>
                     <li><code>**/*.prompt</code> - All .prompt files</li>
                   </ul>
                   <p className="mt-2">Leave empty to import all supported file types.</p>

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     } as any;
 
     // User-specific metrics
-    const userMetrics = await getUserMetrics(session.user.id, timeRange);
+    const userMetrics = await getUserMetrics(user.id, timeRange);
     metrics.user = userMetrics;
 
     // System metrics (if requested and user has permission)

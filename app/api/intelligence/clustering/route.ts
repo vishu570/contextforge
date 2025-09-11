@@ -7,11 +7,12 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -24,9 +25,9 @@ export async function POST(request: NextRequest) {
       distance = 'cosine',
     } = body;
 
-    const clusteringService = new SemanticClusteringService(session.user.id);
+    const clusteringService = new SemanticClusteringService(user.id);
     
-    const analysis = await clusteringService.clusterItems(session.user.id, {
+    const analysis = await clusteringService.clusterItems(user.id, {
       algorithm,
       numClusters,
       threshold,
@@ -73,8 +74,8 @@ export async function GET(request: NextRequest) {
     }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const clusteringService = new SemanticClusteringService(session.user.id);
-    const clusters = await clusteringService.getUserClusters(session.user.id);
+    const clusteringService = new SemanticClusteringService(user.id);
+    const clusters = await clusteringService.getUserClusters(user.id);
 
     return NextResponse.json({
       clusters: clusters.map(cluster => ({

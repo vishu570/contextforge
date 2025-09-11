@@ -9,11 +9,12 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
     const items = await prisma.item.findMany({
       where: {
         id: { in: itemIds },
-        userId: session.user.id,
+        userId: user.id,
       },
       select: {
         id: true,
@@ -55,14 +56,14 @@ export async function POST(request: NextRequest) {
 
     switch (operation) {
       case 'generate_embeddings':
-        const embeddingService = new EmbeddingService(session.user.id);
+        const embeddingService = new EmbeddingService(user.id);
         const batchSize = options.batchSize || 10;
         
         // Process in batches
         for (let i = 0; i < items.length; i += batchSize) {
           const batch = items.slice(i, i + batchSize);
           const jobId = await jobQueue.addJob(JobType.BATCH_IMPORT, {
-            userId: session.user.id,
+            userId: user.id,
             operation: 'embeddings',
             items: batch.map(item => ({ id: item.id, content: item.content })),
             providerId: options.providerId,
@@ -72,11 +73,11 @@ export async function POST(request: NextRequest) {
         break;
 
       case 'analyze_content':
-        const analysisService = new ContentAnalysisService(session.user.id);
+        const analysisService = new ContentAnalysisService(user.id);
         
         for (const item of items) {
           const jobId = await jobQueue.addJob(JobType.QUALITY_ASSESSMENT, {
-            userId: session.user.id,
+            userId: user.id,
             itemId: item.id,
             content: item.content,
           });
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
       case 'similarity_scoring':
         const jobId = await jobQueue.addJob(JobType.SIMILARITY_SCORING, {
-          userId: session.user.id,
+          userId: user.id,
           itemIds: items.map(item => item.id),
           algorithm: options.algorithm || 'cosine',
           threshold: options.threshold || 0.7,

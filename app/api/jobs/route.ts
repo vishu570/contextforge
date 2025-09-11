@@ -34,9 +34,9 @@ export async function GET(request: NextRequest) {
     if (status) {
       jobs = await jobQueue.getJobsByStatus(status as any, limit);
       // Filter by user
-      jobs = jobs.filter(job => job.data.userId === session.user.id);
+      jobs = jobs.filter(job => job.data.userId === user.id);
     } else {
-      jobs = await jobQueue.getUserJobs(session.user.id, limit);
+      jobs = await jobQueue.getUserJobs(user.id, limit);
     }
 
     // Filter by type if specified
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
       for (const jobData of validatedData.jobs) {
         // Ensure userId is set
-        jobData.data.userId = session.user.id;
+        jobData.data.userId = user.id;
 
         const jobId = await jobQueue.addJob(
           jobData.type,
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       const validatedData = CreateJobSchema.parse(body);
       
       // Ensure userId is set
-      validatedData.data.userId = session.user.id;
+      validatedData.data.userId = user.id;
 
       const jobId = await jobQueue.addJob(
         validatedData.type,
