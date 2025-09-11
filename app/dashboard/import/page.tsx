@@ -147,39 +147,80 @@ export default function ImportPage() {
 
       // Start listening to progress events
       if (responseData.importId) {
-        const eventSource = new EventSource(`/api/import/github/progress?importId=${responseData.importId}`);
+        console.log(`Starting EventSource for importId: ${responseData.importId}`);
 
-        eventSource.onmessage = (event) => {
-          const progress = JSON.parse(event.data);
-          setImportProgress(progress);
+        // Wait a short moment to ensure the backend has started processing
+        setTimeout(() => {
+          const eventSource = new EventSource(`/api/import/github/progress?importId=${responseData.importId}`);
+          let retryCount = 0;
+          const maxRetries = 3;
 
-          if (progress.status === 'completed') {
-            eventSource.close();
-            setIsImporting(false);
+          eventSource.onopen = () => {
+            console.log('EventSource connection opened');
+            retryCount = 0; // Reset retry count on successful connection
+          };
 
-            // Show success message
-            let successMessage = `Successfully imported ${progress.processedFiles} items`;
-            if (progress.totalFiles > 0) {
-              successMessage += ` from ${progress.totalFiles} files found`;
+          eventSource.onmessage = (event) => {
+            console.log('Received progress event:', event.data);
+
+            // Skip heartbeat messages
+            if (event.data.trim() === '') return;
+
+            try {
+              const progress = JSON.parse(event.data);
+              setImportProgress(progress);
+
+              if (progress.status === 'completed') {
+                console.log('Import completed, closing EventSource');
+                eventSource.close();
+                setIsImporting(false);
+
+                // Show success message
+                let successMessage = `Successfully imported ${progress.processedFiles} items`;
+                if (progress.totalFiles > 0) {
+                  successMessage += ` from ${progress.totalFiles} files found`;
+                }
+                setSuccess(successMessage);
+                setGithubUrl('');
+
+                setTimeout(() => {
+                  router.push(`/dashboard/import/review?importId=${responseData.importId}`);
+                }, 2000);
+              } else if (progress.status === 'failed') {
+                console.log('Import failed, closing EventSource');
+                eventSource.close();
+                setIsImporting(false);
+                setError(progress.message || 'Import failed');
+              }
+            } catch (parseError) {
+              console.error('Error parsing progress data:', parseError, 'Raw data:', event.data);
             }
-            setSuccess(successMessage);
-            setGithubUrl('');
+          };
 
-            setTimeout(() => {
-              router.push(`/dashboard/import/review?importId=${responseData.importId}`);
-            }, 2000);
-          } else if (progress.status === 'failed') {
-            eventSource.close();
-            setIsImporting(false);
-            setError(progress.message);
-          }
-        };
+          eventSource.onerror = (error) => {
+            console.error('EventSource error:', error);
+            retryCount++;
 
-        eventSource.onerror = () => {
-          eventSource.close();
-          setIsImporting(false);
-          setError('Connection to import progress lost');
-        };
+            if (retryCount >= maxRetries) {
+              eventSource.close();
+              setIsImporting(false);
+              setError('Connection to import progress lost after multiple retries');
+            } else {
+              console.log(`EventSource error, retry ${retryCount}/${maxRetries}`);
+              // EventSource will automatically retry
+            }
+          };
+
+          // Safety timeout to prevent infinite imports
+          setTimeout(() => {
+            if (eventSource.readyState !== EventSource.CLOSED) {
+              console.warn('Import taking too long, closing EventSource');
+              eventSource.close();
+              setIsImporting(false);
+              setError('Import timed out - please check the import history for results');
+            }
+          }, 5 * 60 * 1000); // 5 minute timeout
+        }, 100); // Wait 100ms before starting EventSource
       } else {
         // Fallback if no progress tracking
         setIsImporting(false);

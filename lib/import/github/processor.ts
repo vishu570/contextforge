@@ -334,7 +334,7 @@ export class GitHubImportProcessor {
       } catch (aiError) {
         console.warn(
           "AI categorization failed, falling back to rule-based:",
-          aiError.message
+          aiError instanceof Error ? aiError.message : "Unknown error"
         )
         // Fallback to rule-based categorization
         suggestedCategories = this.extractCategories(content)
@@ -358,7 +358,8 @@ export class GitHubImportProcessor {
               name: categoryName,
               userId,
               description: `Auto-generated category from import`,
-              metadata: JSON.stringify({ source: "auto_import" }),
+              color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`, // Random color
+              icon: "tag", // Use tag icon for auto-generated categories
             },
           })
         }

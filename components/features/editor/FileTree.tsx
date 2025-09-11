@@ -305,8 +305,8 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
                         <div
                           key={item.id}
                           className={`flex items-center group rounded px-2 py-1.5 cursor-pointer transition-colors ${isSelected
-                              ? 'bg-blue-600/20 border border-blue-500/30'
-                              : 'hover:bg-gray-800/50'
+                            ? 'bg-blue-600/20 border border-blue-500/30'
+                            : 'hover:bg-gray-800/50'
                             }`}
                           onClick={() => {
                             setSelectedItemId(item.id);
@@ -326,7 +326,9 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
 
                             {/* Content preview */}
                             <div className="text-xs text-gray-500 truncate mt-0.5">
-                              {item.content.slice(0, 60)}...
+                              <div className="text-xs text-gray-500 truncate mt-0.5">
+                                {item.content ? `${item.content.slice(0, 60)}...` : 'No content'}
+                              </div>
                             </div>
 
                             {/* Tags */}
