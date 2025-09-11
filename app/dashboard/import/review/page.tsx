@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { EnhancedReviewItem } from '@/components/enhanced-review-item';
+import { UnifiedReviewItem } from '@/components/unified-review-item';
 import { BulkActionsToolbar } from '@/components/bulk-actions-toolbar';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -54,9 +54,11 @@ interface StagedItem {
     id: string;
     name: string;
     similarity: number;
+    type: 'identical' | 'similar';
   }>;
   suggestedPath?: string;
   status: 'pending' | 'approved' | 'rejected';
+  tags?: string[];
 }
 
 const typeIcons = {
@@ -298,7 +300,8 @@ function ImportReviewContent() {
                 ...item, 
                 classification: data.classification,
                 suggestedPath: data.suggestedPath,
-                metadata: { ...item.metadata, ...data.extractedMetadata }
+                metadata: { ...item.metadata, ...data.extractedMetadata },
+                tags: data.extractedMetadata?.extractedTags || item.tags
               }
             : item
         )
@@ -309,13 +312,15 @@ function ImportReviewContent() {
           ...selectedItem, 
           classification: data.classification,
           suggestedPath: data.suggestedPath,
-          metadata: { ...selectedItem.metadata, ...data.extractedMetadata }
+          metadata: { ...selectedItem.metadata, ...data.extractedMetadata },
+          tags: data.extractedMetadata?.extractedTags || selectedItem.tags
         });
       }
       
+      const tagCount = data.extractedMetadata?.extractedTags?.length || 0;
       toast({
         title: "Classification Complete",
-        description: `Classified as ${data.classification.type} with ${Math.round(data.classification.confidence * 100)}% confidence`,
+        description: `Classified as ${data.classification.type} with ${Math.round(data.classification.confidence * 100)}% confidence${tagCount > 0 ? ` and ${tagCount} tags extracted` : ''}`,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to run classification';
@@ -627,12 +632,13 @@ function ImportReviewContent() {
                             ? 'ring-2 ring-primary/20'
                             : ''
                         }`}>
-                          <EnhancedReviewItem
+                          <UnifiedReviewItem
                             item={item}
                             onUpdate={(updates) => updateItemData(item.id, updates)}
                             onApprove={() => handleItemAction(item.id, 'approve')}
                             onReject={() => handleItemAction(item.id, 'reject')}
                             onOptimize={() => generateOptimizations(item.id)}
+                            onRunClassification={() => runClassification(item.id, item.content, item.name, item.type)}
                             isProcessing={isProcessing || isBulkProcessing}
                           />
                           {selectedItemIds.has(item.id) && item.status === 'pending' && (

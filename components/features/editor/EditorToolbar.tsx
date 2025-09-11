@@ -6,8 +6,6 @@ import {
   Menu, 
   Play, 
   Download, 
-  Search,
-  Settings,
   User,
   LogOut,
   Upload
@@ -144,25 +142,8 @@ export function EditorToolbar({
         </div>
       )}
 
-      {/* Right side - Search and user menu */}
+      {/* Right side - User menu */}
       <div className="flex items-center space-x-2">
-        {/* Search */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-        >
-          <Search className="h-4 w-4" />
-        </Button>
-
-        {/* Settings */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-        >
-          <Settings className="h-4 w-4" />
-        </Button>
 
         {/* User menu */}
         <DropdownMenu>

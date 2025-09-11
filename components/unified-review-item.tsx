@@ -99,6 +99,7 @@ interface UnifiedReviewItemProps {
   onApprove: () => void;
   onReject: () => void;
   onOptimize: () => void;
+  onRunClassification?: () => void;
   isProcessing: boolean;
   availableFolders?: string[];
   availableTags?: string[];
@@ -110,6 +111,7 @@ export function UnifiedReviewItem({
   onApprove, 
   onReject, 
   onOptimize, 
+  onRunClassification,
   isProcessing,
   availableFolders = [],
   availableTags = []
@@ -277,7 +279,7 @@ export function UnifiedReviewItem({
       
       <CardContent className="space-y-6">
         {/* Classification Section */}
-        {item.classification && (
+        {item.classification ? (
           <div className="space-y-3 p-4 bg-accent/20 rounded-lg">
             <div className="flex items-center justify-between">
               <h4 className="font-medium flex items-center">
@@ -291,6 +293,17 @@ export function UnifiedReviewItem({
                 <span className={`text-sm font-medium ${getConfidenceColor(item.classification.confidence)}`}>
                   {Math.round(item.classification.confidence * 100)}%
                 </span>
+                {onRunClassification && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={onRunClassification}
+                    disabled={isProcessing}
+                  >
+                    <RefreshCw className="mr-2 h-3 w-3" />
+                    Re-classify
+                  </Button>
+                )}
               </div>
             </div>
             
@@ -308,6 +321,25 @@ export function UnifiedReviewItem({
                 </AlertDescription>
               </Alert>
             )}
+          </div>
+        ) : (
+          <div className="p-4 bg-accent/10 rounded-lg border-2 border-dashed">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Sparkles className="mr-2 h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">No AI classification yet</span>
+              </div>
+              {onRunClassification && (
+                <Button
+                  size="sm"
+                  onClick={onRunClassification}
+                  disabled={isProcessing}
+                >
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Run Classification
+                </Button>
+              )}
+            </div>
           </div>
         )}
 

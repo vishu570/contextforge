@@ -27,7 +27,6 @@ import {
   LogOut,
   Menu,
   Plus,
-  Search,
   FolderOpen,
   History,
   GitBranch,
@@ -133,14 +132,6 @@ export function DashboardLayout({ children, user }: DashboardLayoutProps) {
             >
               <Menu className="h-5 w-5" />
             </Button>
-            <div className="flex items-center space-x-2">
-              <Search className="h-5 w-5 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search items..."
-                className="bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground"
-              />
-            </div>
           </div>
           <div className="flex items-center space-x-4">
             <Button variant="outline" size="sm" asChild>

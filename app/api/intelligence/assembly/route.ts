@@ -7,11 +7,12 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const assemblyEngine = new ContextAssemblyEngine(session.user.id);
+    const assemblyEngine = new ContextAssemblyEngine(user.id);
     
     const context = {
       intent,
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const action = url.searchParams.get('action');
 
-    const assemblyEngine = new ContextAssemblyEngine(session.user.id);
+    const assemblyEngine = new ContextAssemblyEngine(user.id);
 
     switch (action) {
       case 'templates':
