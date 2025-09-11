@@ -12,29 +12,46 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Import ID required" }, { status: 400 })
   }
 
-  // Get user from token
+  // Get user from token with better error handling
   const token =
     request.cookies.get("auth-token")?.value ||
     request.headers.get("authorization")?.replace("Bearer ", "")
+
+  console.log(`SSE auth check - token exists: ${!!token}`)
+
   if (!token) {
+    console.log("SSE: No auth token found")
     return NextResponse.json(
       { error: "Authentication required" },
       { status: 401 }
     )
   }
 
-  const user = await getUserFromToken(token)
-  if (!user) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+  try {
+    const user = await getUserFromToken(token)
+    if (!user) {
+      console.log("SSE: Invalid token")
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+    }
+    console.log(`SSE: Authenticated user: ${user.id}`)
+  } catch (error) {
+    console.error("SSE: Auth error:", error)
+    return NextResponse.json(
+      { error: "Authentication failed" },
+      { status: 401 }
+    )
   }
 
   // Create Server-Sent Events response
   const encoder = new TextEncoder()
+  console.log(`Creating SSE stream for importId: ${importId}`)
 
   const stream = new ReadableStream({
     start(controller) {
       let intervalId: NodeJS.Timeout | null = null
       let isClosed = false
+
+      console.log(`SSE stream started for ${importId}`)
 
       const sendProgress = () => {
         if (isClosed) return
@@ -78,6 +95,20 @@ export async function GET(request: NextRequest) {
             return
           }
         }
+      }
+
+      // Send initial connection confirmation
+      try {
+        const initialData = `data: ${JSON.stringify({
+          status: "connected",
+          message: "Progress stream connected",
+          importId: importId,
+          timestamp: new Date().toISOString(),
+        })}\n\n`
+        controller.enqueue(encoder.encode(initialData))
+        console.log(`SSE: Sent initial connection message for ${importId}`)
+      } catch (error) {
+        console.error("SSE: Error sending initial message:", error)
       }
 
       // Send initial progress immediately

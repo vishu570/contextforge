@@ -171,6 +171,13 @@ export default function ImportPage() {
 
             try {
               const progress = JSON.parse(event.data);
+
+              // Handle connection confirmation
+              if (progress.status === 'connected') {
+                console.log('SSE connection confirmed:', progress.message);
+                return;
+              }
+
               setImportProgress(progress);
 
               if (progress.status === 'completed') {
@@ -202,12 +209,15 @@ export default function ImportPage() {
 
           eventSource.onerror = (error) => {
             console.error('EventSource error:', error);
+            console.error('EventSource readyState:', eventSource.readyState);
+            console.error('EventSource url:', eventSource.url);
+
             retryCount++;
 
             if (retryCount >= maxRetries) {
               eventSource.close();
               setIsImporting(false);
-              setError('Connection to import progress lost after multiple retries');
+              setError(`Connection to import progress lost after multiple retries. Ready state: ${eventSource.readyState}`);
             } else {
               console.log(`EventSource error, retry ${retryCount}/${maxRetries}`);
               // EventSource will automatically retry

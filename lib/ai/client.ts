@@ -1,9 +1,16 @@
 // AI Client Library - Multi-provider optimization interface
-export * from './providers'
+export * from "./providers"
 
-import { prisma } from '../db'
-import { decryptApiKey } from '../auth'
-import { AIProvider, OptimizationType, OptimizationResult, ProviderName, createProvider, ProviderError } from './providers'
+import { prisma } from "../db"
+import { decryptApiKey } from "../utils"
+import {
+  AIProvider,
+  createProvider,
+  OptimizationResult,
+  OptimizationType,
+  ProviderError,
+  ProviderName,
+} from "./providers"
 
 export class AIClient {
   private providers: Map<string, AIProvider> = new Map()
@@ -13,7 +20,7 @@ export class AIClient {
   async initializeFromUser(userId: string): Promise<void> {
     const apiKeys = await prisma.apiKey.findMany({
       where: { userId },
-      select: { provider: true, encryptedKey: true }
+      select: { provider: true, encryptedKey: true },
     })
 
     for (const apiKey of apiKeys) {
@@ -22,27 +29,30 @@ export class AIClient {
         const provider = createProvider(apiKey.provider as ProviderName, {
           apiKey: decryptedKey,
           timeout: 30000,
-          retries: this.retryAttempts
+          retries: this.retryAttempts,
         })
-        
+
         // Test provider health before adding
         if (await provider.isHealthy()) {
           this.providers.set(apiKey.provider, provider)
         }
       } catch (error) {
-        console.warn(`Failed to initialize ${apiKey.provider} provider:`, error instanceof Error ? error.message : 'Unknown error')
+        console.warn(
+          `Failed to initialize ${apiKey.provider} provider:`,
+          error instanceof Error ? error.message : "Unknown error"
+        )
       }
     }
   }
 
   async optimize(
-    itemId: string, 
-    content: string, 
-    type: OptimizationType, 
+    itemId: string,
+    content: string,
+    type: OptimizationType,
     preferredProvider?: string
   ): Promise<OptimizationResult> {
     const provider = this.selectProvider(preferredProvider)
-    
+
     const result = await this.executeWithRetry(async () => {
       const optimization = await provider.optimize(content, type)
       optimization.itemId = itemId
@@ -55,12 +65,12 @@ export class AIClient {
   }
 
   async categorize(
-    content: string, 
+    content: string,
     options?: { maxSuggestions?: number; existingCategories?: string[] },
     preferredProvider?: string
   ): Promise<string[]> {
     const provider = this.selectProvider(preferredProvider)
-    
+
     return this.executeWithRetry(async () => {
       return provider.categorize(content, options)
     })
@@ -68,7 +78,7 @@ export class AIClient {
 
   async embed(text: string, preferredProvider?: string): Promise<number[]> {
     const provider = this.selectProvider(preferredProvider)
-    
+
     return this.executeWithRetry(async () => {
       return provider.embed(text)
     })
@@ -91,11 +101,11 @@ export class AIClient {
     // Fallback to first available provider
     const availableProviders = Array.from(this.providers.values())
     if (availableProviders.length === 0) {
-      throw new ProviderError('No AI providers available', 'client')
+      throw new ProviderError("No AI providers available", "client")
     }
 
     // Prefer OpenAI, then Anthropic, then Gemini
-    const providerPriority = ['openai', 'anthropic', 'gemini']
+    const providerPriority = ["openai", "anthropic", "gemini"]
     for (const name of providerPriority) {
       if (this.providers.has(name)) {
         return this.providers.get(name)!
@@ -118,18 +128,20 @@ export class AIClient {
 
       // Exponential backoff
       const delay = this.retryDelay * Math.pow(2, attempt - 1)
-      await new Promise(resolve => setTimeout(resolve, delay))
-      
+      await new Promise((resolve) => setTimeout(resolve, delay))
+
       return this.executeWithRetry(operation, attempt + 1)
     }
   }
 
-  private async storeOptimizationResult(result: OptimizationResult): Promise<void> {
+  private async storeOptimizationResult(
+    result: OptimizationResult
+  ): Promise<void> {
     try {
       await prisma.optimizationResult.create({
         data: {
           id: result.id,
-          userId: '', // Will be set by API handler
+          userId: "", // Will be set by API handler
           itemId: result.itemId,
           optimizationType: result.optimizationType,
           originalVersion: result.originalVersion,
@@ -142,11 +154,14 @@ export class AIClient {
           costEstimate: result.costEstimate,
           status: result.status,
           errorMessage: result.errorMessage,
-          metadata: JSON.stringify(result.metadata || {})
-        }
+          metadata: JSON.stringify(result.metadata || {}),
+        },
       })
     } catch (error) {
-      console.warn('Failed to store optimization result:', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        "Failed to store optimization result:",
+        error instanceof Error ? error.message : "Unknown error"
+      )
     }
   }
 }
