@@ -10,7 +10,7 @@ import { EditorToolbar } from './EditorToolbar';
 import { WelcomeScreen } from './WelcomeScreen';
 import { ResponsiveMobile } from './ResponsiveMobile';
 import { useToast } from '@/hooks/use-toast';
-import type { EditorState, EditorActions, EditorTab, FileTreeItem, EditorLayoutProps } from '@/src/types/editor';
+import type { EditorState, EditorActions, EditorTab, FileTreeItem, EditorLayoutProps } from '@/types/editor';
 
 export function EditorLayout({ initialData }: EditorLayoutProps) {
   const { toast } = useToast();

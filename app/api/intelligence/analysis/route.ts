@@ -7,11 +7,12 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const analysisService = new ContentAnalysisService(session.user.id);
+    const analysisService = new ContentAnalysisService(user.id);
     const insights = await analysisService.analyzeContent(itemId, content);
 
     return NextResponse.json({
@@ -44,11 +45,12 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const url = new URL(request.url);
@@ -61,7 +63,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const analysisService = new ContentAnalysisService(session.user.id);
+    const analysisService = new ContentAnalysisService(user.id);
     const analysis = await analysisService.getContentAnalysis(itemId);
 
     if (!analysis) {

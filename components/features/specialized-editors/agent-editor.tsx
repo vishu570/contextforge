@@ -55,7 +55,7 @@ import {
   ResponseStyle,
   Tool,
   Item
-} from '@/src/types/improved-architecture';
+} from '@/types/improved-architecture';
 
 // Monaco Editor
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {

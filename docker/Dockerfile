@@ -6,6 +6,14 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# Install build dependencies for native modules
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    sqlite-dev \
+    libc6-compat
+
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY prisma ./prisma/
@@ -79,13 +87,18 @@ FROM node:18-alpine AS development
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies and build tools for development
 RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
     sqlite \
+    sqlite-dev \
     openssl \
     ca-certificates \
     curl \
-    git
+    git \
+    libc6-compat
 
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./

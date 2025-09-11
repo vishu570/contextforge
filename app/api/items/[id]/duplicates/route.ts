@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 // Duplicate detection API - Find similar items to prevent duplicates
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserFromToken(request);
@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     const { searchParams } = new URL(request.url);
     const threshold = parseFloat(searchParams.get('threshold') || '0.8');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -122,7 +122,7 @@ function calculateSimilarity(text1: string, text2: string): number {
 // Advanced duplicate detection with content analysis
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserFromToken(request);
@@ -130,7 +130,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     const body = await request.json();
     const { content, title, type } = body;
 

@@ -6,7 +6,7 @@ import path from 'path';
 // Get import job status and progress
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getUserFromToken(request);
@@ -14,7 +14,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await context.params;
     const jobsDir = path.join(process.cwd(), 'uploads', 'jobs');
     const jobFile = path.join(jobsDir, `${id}.json`);
 

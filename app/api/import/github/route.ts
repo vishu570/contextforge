@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../../../../lib/db'
 import { getUserFromToken } from '../../../../lib/auth'
 import { GitHubProcessor } from '../../../../lib/import/github/realProcessor'
-import { updateProgress } from './progress/route'
+import { updateProgress } from '@/lib/import/progress'
 
 // Request validation schema with backward compatibility
 const githubImportRequestSchema = z.object({
@@ -13,7 +13,10 @@ const githubImportRequestSchema = z.object({
     fileExtensions: z.array(z.string()).optional().default(['.md', '.txt', '.json', '.yml', '.yaml']),
     paths: z.array(z.string()).optional(),
     excludePaths: z.array(z.string()).optional().default(['node_modules', '.git'])
-  }).optional().default({}),
+  }).optional().default({
+    fileExtensions: ['.md', '.txt', '.json', '.yml', '.yaml'],
+    excludePaths: ['node_modules', '.git']
+  }),
   autoCategorie: z.boolean().optional().default(true),
   collectionId: z.string().optional(),
   // Backward compatibility with old frontend format
@@ -366,7 +369,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       )
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { EditorTab } from '@/src/types/editor';
+import { EditorTab } from '@/types/editor';
 import { 
   Save, 
   Menu, 

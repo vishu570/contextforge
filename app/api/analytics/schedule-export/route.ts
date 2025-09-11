@@ -8,11 +8,12 @@ export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -21,7 +22,7 @@ export async function POST(request: NextRequest) {
     // Create scheduled export record
     const scheduledExport = await prisma.scheduledExport.create({
       data: {
-        userId: session.user.id,
+        userId: user.id,
         name: config.customTitle || `${config.reportType} Report`,
         format: config.format,
         reportType: config.reportType,
@@ -58,16 +59,17 @@ export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const scheduledExports = await prisma.scheduledExport.findMany({
       where: {
-        userId: session.user.id
+        userId: user.id
       },
       orderBy: {
         createdAt: 'desc'
@@ -95,11 +97,12 @@ export async function PUT(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -108,7 +111,7 @@ export async function PUT(request: NextRequest) {
     const scheduledExport = await prisma.scheduledExport.update({
       where: {
         id,
-        userId: session.user.id
+        userId: user.id
       },
       data: {
         ...updates,
@@ -139,11 +142,12 @@ export async function DELETE(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     const user = await getUserFromToken(token);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -156,7 +160,7 @@ export async function DELETE(request: NextRequest) {
     await prisma.scheduledExport.delete({
       where: {
         id,
-        userId: session.user.id
+        userId: user.id
       }
     });
 

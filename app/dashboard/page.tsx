@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { EditorLayout } from '@/src/components/editor/EditorLayout';
+import { EditorLayout } from '@/components/features/editor/EditorLayout';
 
 async function getDashboardData(userId: string) {
   const items = await prisma.item.findMany({

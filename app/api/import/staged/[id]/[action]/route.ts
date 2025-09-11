@@ -56,12 +56,12 @@ export async function POST(
           name: stagedItem.name,
           content: stagedItem.content,
           format: stagedItem.format,
-          size: stagedItem.size,
           sourceType: 'github',
           sourceMetadata: stagedItem.metadata,
           metadata: JSON.stringify({
             importId: stagedItem.importId,
             originalPath: stagedItem.originalPath,
+            size: stagedItem.size,
             reviewStatus: 'approved',
             reviewedAt: new Date().toISOString(),
           }),

@@ -1,26 +1,23 @@
-version: '3.8'
-
 services:
   # ContextForge Development Server
   contextforge-dev:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../../
+      dockerfile: docker/Dockerfile
       target: development
     container_name: contextforge-dev
     ports:
       - "3000:3000"
       - "5555:5555"  # Prisma Studio
+    env_file:
+      - ../.env.docker
     environment:
       - NODE_ENV=development
       - DATABASE_URL=file:/app/data/dev.db
       - REDIS_URL=redis://redis-dev:6379
       - NEXTAUTH_SECRET=dev-secret-key
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - GOOGLE_AI_API_KEY=${GOOGLE_AI_API_KEY}
     volumes:
-      - .:/app
+      - ../../:/app
       - /app/node_modules
       - /app/.next
       - dev_data:/app/data

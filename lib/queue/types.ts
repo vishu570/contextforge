@@ -41,7 +41,7 @@ export enum JobStatus {
 export const BaseJobDataSchema = z.object({
   userId: z.string(),
   itemId: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 // Classification job data
@@ -91,7 +91,7 @@ export const BatchImportJobDataSchema = BaseJobDataSchema.extend({
   files: z.array(z.object({
     path: z.string(),
     content: z.string(),
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
   })),
 });
 
@@ -156,25 +156,41 @@ export const IntelligencePipelineJobDataSchema = BaseJobDataSchema.extend({
     'optimization',
     'assembly'
   ])),
-  options: z.record(z.any()).optional(),
+  options: z.record(z.string(), z.any()).optional(),
 });
+
+// Individual job data types
+export type ClassificationJobData = z.infer<typeof ClassificationJobDataSchema>;
+export type OptimizationJobData = z.infer<typeof OptimizationJobDataSchema>;
+export type ConversionJobData = z.infer<typeof ConversionJobDataSchema>;
+export type DeduplicationJobData = z.infer<typeof DeduplicationJobDataSchema>;
+export type FolderSuggestionJobData = z.infer<typeof FolderSuggestionJobDataSchema>;
+export type BatchImportJobData = z.infer<typeof BatchImportJobDataSchema>;
+export type QualityAssessmentJobData = z.infer<typeof QualityAssessmentJobDataSchema>;
+export type SimilarityScoringJobData = z.infer<typeof SimilarityScoringJobDataSchema>;
+export type EmbeddingGenerationJobData = z.infer<typeof EmbeddingGenerationJobDataSchema>;
+export type ContentAnalysisJobData = z.infer<typeof ContentAnalysisJobDataSchema>;
+export type SemanticClusteringJobData = z.infer<typeof SemanticClusteringJobDataSchema>;
+export type ModelOptimizationJobData = z.infer<typeof ModelOptimizationJobDataSchema>;
+export type ContextAssemblyJobData = z.infer<typeof ContextAssemblyJobDataSchema>;
+export type IntelligencePipelineJobData = z.infer<typeof IntelligencePipelineJobDataSchema>;
 
 // Union type for all job data
 export type JobData = 
-  | z.infer<typeof ClassificationJobDataSchema>
-  | z.infer<typeof OptimizationJobDataSchema>
-  | z.infer<typeof ConversionJobDataSchema>
-  | z.infer<typeof DeduplicationJobDataSchema>
-  | z.infer<typeof FolderSuggestionJobDataSchema>
-  | z.infer<typeof BatchImportJobDataSchema>
-  | z.infer<typeof QualityAssessmentJobDataSchema>
-  | z.infer<typeof SimilarityScoringJobDataSchema>
-  | z.infer<typeof EmbeddingGenerationJobDataSchema>
-  | z.infer<typeof ContentAnalysisJobDataSchema>
-  | z.infer<typeof SemanticClusteringJobDataSchema>
-  | z.infer<typeof ModelOptimizationJobDataSchema>
-  | z.infer<typeof ContextAssemblyJobDataSchema>
-  | z.infer<typeof IntelligencePipelineJobDataSchema>;
+  | ClassificationJobData
+  | OptimizationJobData
+  | ConversionJobData
+  | DeduplicationJobData
+  | FolderSuggestionJobData
+  | BatchImportJobData
+  | QualityAssessmentJobData
+  | SimilarityScoringJobData
+  | EmbeddingGenerationJobData
+  | ContentAnalysisJobData
+  | SemanticClusteringJobData
+  | ModelOptimizationJobData
+  | ContextAssemblyJobData
+  | IntelligencePipelineJobData;
 
 // Job result types
 export interface JobResult {
@@ -226,3 +242,4 @@ export interface WebSocketMessage {
   data: any;
   timestamp: Date;
 }
+

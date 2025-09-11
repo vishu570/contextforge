@@ -21,10 +21,10 @@ import {
 } from 'lucide-react';
 
 // Import our new components
-import { ModelSelector } from '@/src/components/llm/model-selector';
-import { FunctionAttachmentSystem } from '@/src/components/functions/function-attachment-system';
-import { PromptTestingPlayground } from '@/src/components/playground/prompt-testing-playground';
-import { EnhancedPromptEditorComplete } from '@/src/components/prompt-editor/enhanced-prompt-editor-complete';
+import { ModelSelector } from '@/components/features/llm/model-selector';
+import { FunctionAttachmentSystem } from '@/components/features/functions/function-attachment-system';
+import { PromptTestingPlayground } from '@/components/features/playground/prompt-testing-playground';
+import { EnhancedPromptEditorComplete } from '@/components/features/prompt-editor/enhanced-prompt-editor-complete';
 
 export default function AIPlaygroundPage() {
   const [activeTab, setActiveTab] = useState('editor');

@@ -1,6 +1,6 @@
 'use client';
 
-import { EditorTab } from '@/src/types/editor';
+import { EditorTab } from '@/types/editor';
 import { X, FileText, Bot, FileCode, Webhook, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 

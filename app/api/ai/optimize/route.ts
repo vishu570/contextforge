@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       console.error('Optimization failed:', error)
       
       // Check for rate limiting
-      if (error.message?.includes('rate limit') || error.statusCode === 429) {
+      if ((error as any)?.message?.includes('rate limit') || (error as any)?.statusCode === 429) {
         return NextResponse.json(
           { error: 'AI provider rate limit exceeded. Please try again later.' },
           { status: 429 }
@@ -135,13 +135,13 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json(
-        { error: `Optimization failed: ${error.message}` },
+        { error: `Optimization failed: ${(error as any)?.message || 'Unknown error'}` },
         { status: 500 }
       )
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const fieldErrors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
+      const fieldErrors = error.issues.map(err => `${err.path.join('.')}: ${err.message}`)
       return NextResponse.json(
         { error: `Validation failed: ${fieldErrors.join(', ')}` },
         { status: 400 }

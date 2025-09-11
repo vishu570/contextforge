@@ -12,7 +12,10 @@ const githubImportRequestSchema = z.object({
     fileExtensions: z.array(z.string()).optional().default(['.md', '.txt', '.json', '.yml', '.yaml']),
     paths: z.array(z.string()).optional(),
     excludePaths: z.array(z.string()).optional().default(['node_modules', '.git'])
-  }).optional().default({}),
+  }).optional().default({
+    fileExtensions: ['.md', '.txt', '.json', '.yml', '.yaml'],
+    excludePaths: ['node_modules', '.git']
+  }),
   autoCategorie: z.boolean().optional().default(true),
   collectionId: z.string().optional(),
   // Backward compatibility with old frontend format
@@ -192,7 +195,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const fieldErrors = error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
+      const fieldErrors = error.issues.map(err => `${err.path.join('.')}: ${err.message}`)
       return NextResponse.json(
         { error: `Validation failed: ${fieldErrors.join(', ')}` },
         { status: 400 }
@@ -200,7 +203,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle rate limiting errors
-    if (error.message?.includes('rate limit') || error.status === 429) {
+    if ((error as any).message?.includes('rate limit') || (error as any).status === 429) {
       return NextResponse.json(
         { error: 'GitHub API rate limit exceeded. Please try again later.' },
         { status: 429 }
@@ -217,7 +220,7 @@ export async function POST(request: NextRequest) {
 
 function estimateFileCount(repoPath: string, filters?: any): number {
   // Simple estimation based on known repositories for testing
-  const estimates = {
+  const estimates: Record<string, number> = {
     'microsoft/TypeScript': 1500,
     'facebook/react': 800,
     'nodejs/node': 2000,

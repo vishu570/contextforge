@@ -53,7 +53,7 @@ import { MonacoEditor } from './MonacoEditor';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import type { EditorTab } from '@/src/types/editor';
+import type { EditorTab } from '@/types/editor';
 
 interface ComprehensiveEditorProps {
   tab: EditorTab;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileTreeItem } from '@/src/types/editor';
+import { FileTreeItem } from '@/types/editor';
 import { 
   FileText, 
   Bot, 

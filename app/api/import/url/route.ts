@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
     const importRecord = await prisma.import.create({
       data: {
         userId: user.id,
+        sourceType: 'url',
         status: 'processing',
         totalFiles: 1,
         processedFiles: 0,

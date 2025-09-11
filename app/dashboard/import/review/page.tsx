@@ -181,12 +181,13 @@ function ImportReviewContent() {
         )
       );
       
-      // Move to next pending item
-      const nextPendingItem = stagedItems.find(item => 
-        item.id !== itemId && item.status === 'pending'
-      );
-      if (nextPendingItem) {
-        setSelectedItem(nextPendingItem);
+      // If the currently selected item was processed, move to next pending item
+      // Otherwise keep the current selection
+      if (selectedItem?.id === itemId) {
+        const nextPendingItem = stagedItems.find(item => 
+          item.id !== itemId && item.status === 'pending'
+        );
+        setSelectedItem(nextPendingItem || null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to ${action} item`);
@@ -554,24 +555,23 @@ function ImportReviewContent() {
 
         {/* Enhanced Review Interface */}
         <div className="space-y-6">
-          {/* Items Navigation */}
+          {/* Items List with Inline Details */}
           <Card>
             <CardHeader>
-              <CardTitle>Items to Review ({stagedItems.findIndex(item => item.id === selectedItem?.id) + 1} of {stagedItems.length})</CardTitle>
+              <CardTitle>Items to Review ({selectedItem ? stagedItems.findIndex(item => item.id === selectedItem?.id) + 1 : 0} of {stagedItems.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {/* Grid layout for items with checkboxes */}
-                <div className="grid gap-2">
-                  {stagedItems.map((item, index) => {
-                    const Icon = typeIcons[item.type];
-                    const isSelected = selectedItem?.id === item.id;
-                    const isChecked = selectedItemIds.has(item.id);
-                    const isPending = item.status === 'pending';
-                    
-                    return (
+              <div className="space-y-2">
+                {stagedItems.map((item) => {
+                  const Icon = typeIcons[item.type];
+                  const isSelected = selectedItem?.id === item.id;
+                  const isChecked = selectedItemIds.has(item.id);
+                  const isPending = item.status === 'pending';
+                  
+                  return (
+                    <div key={item.id} className="space-y-0">
+                      {/* Item Row */}
                       <div
-                        key={item.id}
                         className={`flex items-center space-x-3 p-2 rounded-lg border ${
                           isSelected 
                             ? 'bg-accent border-accent-foreground/20' 
@@ -598,9 +598,14 @@ function ImportReviewContent() {
                           variant={isSelected ? "default" : "ghost"}
                           size="sm"
                           onClick={() => {
-                            setSelectedItem(item);
-                            // Load duplicates when item is selected
-                            loadDuplicates(item.id);
+                            // Toggle selection - if already selected, deselect
+                            if (isSelected) {
+                              setSelectedItem(null);
+                            } else {
+                              setSelectedItem(item);
+                              // Load duplicates when item is selected
+                              loadDuplicates(item.id);
+                            }
                           }}
                           className="flex-1 justify-start h-auto p-2"
                           disabled={isBulkProcessing}
@@ -614,42 +619,42 @@ function ImportReviewContent() {
                           </div>
                         </Button>
                       </div>
-                    );
-                  })}
-                </div>
+                      
+                      {/* Inline Enhanced Review Item */}
+                      {isSelected && (
+                        <div className={`mt-2 rounded-lg ${
+                          selectedItemIds.has(item.id) && item.status === 'pending'
+                            ? 'ring-2 ring-primary/20'
+                            : ''
+                        }`}>
+                          <EnhancedReviewItem
+                            item={item}
+                            onUpdate={(updates) => updateItemData(item.id, updates)}
+                            onApprove={() => handleItemAction(item.id, 'approve')}
+                            onReject={() => handleItemAction(item.id, 'reject')}
+                            onOptimize={() => generateOptimizations(item.id)}
+                            isProcessing={isProcessing || isBulkProcessing}
+                          />
+                          {selectedItemIds.has(item.id) && item.status === 'pending' && (
+                            <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded text-sm text-primary">
+                              This item is selected for bulk operations
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {stagedItems.length === 0 && (
+                  <div className="text-center py-12">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No items to review</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
-
-          {/* Enhanced Review Item */}
-          {selectedItem ? (
-            <div className={`${
-              selectedItemIds.has(selectedItem.id) && selectedItem.status === 'pending'
-                ? 'ring-2 ring-primary/20 rounded-lg'
-                : ''
-            }`}>
-              <EnhancedReviewItem
-                item={selectedItem}
-                onUpdate={(updates) => updateItemData(selectedItem.id, updates)}
-                onApprove={() => handleItemAction(selectedItem.id, 'approve')}
-                onReject={() => handleItemAction(selectedItem.id, 'reject')}
-                onOptimize={() => generateOptimizations(selectedItem.id)}
-                isProcessing={isProcessing || isBulkProcessing}
-              />
-              {selectedItemIds.has(selectedItem.id) && selectedItem.status === 'pending' && (
-                <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded text-sm text-primary">
-                  This item is selected for bulk operations
-                </div>
-              )}
-            </div>
-          ) : (
-            <Card>
-              <CardContent className="text-center py-12">
-                <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">Select an item to review</p>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
   );

@@ -9,7 +9,7 @@ import { TabsManager } from './TabsManager';
 import { MonacoEditor } from './MonacoEditor';
 import { EditorToolbar } from './EditorToolbar';
 import { WelcomeScreen } from './WelcomeScreen';
-import { EditorState, EditorActions } from '@/src/types/editor';
+import { EditorState, EditorActions } from '@/types/editor';
 import { cn } from '@/lib/utils';
 
 interface ResponsiveMobileProps {

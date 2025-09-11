@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Item, Tool, LLMModel } from '@/src/types/improved-architecture';
+import { Item, Tool, LLMModel } from '@/types/improved-architecture';
 
 // Specialized editors
 import { PromptEditor } from './prompt-editor';

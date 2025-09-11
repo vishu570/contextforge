@@ -1,6 +1,6 @@
 import Bull, { Queue, Job as BullJob, JobOptions } from 'bull';
 import { redis } from '../redis';
-import { JobType, JobPriority, JobStatus, JobData, JobResult, JobProgress, Job } from './types';
+import { JobType, JobPriority, JobStatus /*, JobData, JobResult, JobProgress, Job */ } from './types';
 import { prisma } from '../db';
 
 // Queue configuration
@@ -330,10 +330,10 @@ export {
   JobType,
   JobPriority,
   JobStatus,
-  JobData,
-  JobResult,
-  JobProgress,
-  Job,
+  // JobData,
+  // JobResult,
+  // JobProgress,
+  // Job,
   WebSocketMessageType,
-  WebSocketMessage,
+  // WebSocketMessage,
 } from './types';

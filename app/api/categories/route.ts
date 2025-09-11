@@ -110,8 +110,7 @@ export async function POST(request: NextRequest) {
       where: {
         userId: user.id,
         metadata: {
-          path: ['category'],
-          equals: validatedData.name
+          contains: `"category":"${validatedData.name}"`
         }
       },
       take: 1
@@ -128,19 +127,39 @@ export async function POST(request: NextRequest) {
     // In production, you'd have a dedicated categories table
     const categoryItem = await prisma.item.create({
       data: {
-        title: `Category: ${validatedData.name}`,
+        name: `Category: ${validatedData.name}`,
         content: validatedData.description || `Category for organizing ${validatedData.name} items`,
         type: 'template',
-        tags: ['category', 'system'],
+        format: 'text',
+        tags: {
+          create: [
+            {
+              tag: {
+                connectOrCreate: {
+                  where: { name: 'category' },
+                  create: { name: 'category', color: '#6b7280' }
+                }
+              }
+            },
+            {
+              tag: {
+                connectOrCreate: {
+                  where: { name: 'system' },
+                  create: { name: 'system', color: '#ef4444' }
+                }
+              }
+            }
+          ]
+        },
         userId: user.id,
-        metadata: {
+        metadata: JSON.stringify({
           isCategory: true,
           category: validatedData.name,
           categoryDescription: validatedData.description,
           categoryColor: validatedData.color || '#3b82f6',
           categoryIcon: validatedData.icon || 'folder',
           parentCategory: validatedData.parentId
-        }
+        })
       }
     });
 
@@ -164,7 +183,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid category data', details: error.errors },
+        { error: 'Invalid category data', details: error.issues },
         { status: 400 }
       );
     }
@@ -199,8 +218,7 @@ export async function PUT(request: NextRequest) {
       where: {
         userId: user.id,
         metadata: {
-          path: ['category'],
-          equals: categoryId
+          contains: `"category":"${categoryId}"`
         }
       },
       data: {
@@ -252,15 +270,14 @@ export async function DELETE(request: NextRequest) {
       where: {
         userId: user.id,
         metadata: {
-          path: ['category'],
-          equals: categoryId
+          contains: `"category":"${categoryId}"`
         }
       }
     });
 
     // Update items to new category or remove category
     for (const item of itemsInCategory) {
-      const newMetadata = { ...item.metadata } as any;
+      const newMetadata = JSON.parse(item.metadata);
       
       if (moveToCategory) {
         newMetadata.category = moveToCategory;
@@ -271,7 +288,7 @@ export async function DELETE(request: NextRequest) {
       await prisma.item.update({
         where: { id: item.id },
         data: {
-          metadata: newMetadata,
+          metadata: JSON.stringify(newMetadata),
           updatedAt: new Date()
         }
       });

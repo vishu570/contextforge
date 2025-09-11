@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserFromToken } from '@/lib/auth'
-
-// Store for tracking import progress
-const progressStore = new Map<string, {
-  status: 'starting' | 'scanning' | 'processing' | 'completed' | 'failed'
-  progress: number
-  message: string
-  totalFiles: number
-  processedFiles: number
-  currentFile?: string
-  errors: string[]
-}>()
+import { getProgress } from '@/lib/import/progress'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -37,7 +27,7 @@ export async function GET(request: NextRequest) {
   const stream = new ReadableStream({
     start(controller) {
       const sendProgress = () => {
-        const progress = progressStore.get(importId)
+        const progress = getProgress(importId)
         if (progress) {
           const data = `data: ${JSON.stringify(progress)}\n\n`
           controller.enqueue(encoder.encode(data))
@@ -65,37 +55,4 @@ export async function GET(request: NextRequest) {
       'Connection': 'keep-alive',
     },
   })
-}
-
-// Helper function to update progress from the main import route
-export function updateProgress(
-  importId: string, 
-  update: Partial<{
-    status: 'starting' | 'scanning' | 'processing' | 'completed' | 'failed'
-    progress: number
-    message: string
-    totalFiles: number
-    processedFiles: number
-    currentFile: string
-    errors: string[]
-  }>
-) {
-  const current = progressStore.get(importId) || {
-    status: 'starting' as const,
-    progress: 0,
-    message: 'Starting import...',
-    totalFiles: 0,
-    processedFiles: 0,
-    errors: []
-  }
-  
-  const updated = { ...current, ...update }
-  progressStore.set(importId, updated)
-  
-  // Clean up completed/failed imports after 5 minutes
-  if (updated.status === 'completed' || updated.status === 'failed') {
-    setTimeout(() => {
-      progressStore.delete(importId)
-    }, 5 * 60 * 1000)
-  }
 }

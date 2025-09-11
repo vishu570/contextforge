@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { EnhancedLLMService } from '@/src/lib/ai-integrations/enhanced-llm-service';
+import { EnhancedLLMService } from '@/lib/specialized/ai-integrations/enhanced-llm-service';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
 

@@ -11,7 +11,7 @@ const importConfigSchema = z.object({
   autoDetect: z.boolean().default(true),
   delimiter: z.string().default(','),
   skipFirstRow: z.boolean().default(true),
-  mapping: z.record(z.string()).optional(),
+  mapping: z.record(z.string(), z.string()).optional(),
   batchSize: z.number().min(1).max(1000).default(100),
   validateOnly: z.boolean().default(false)
 });

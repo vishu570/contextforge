@@ -39,7 +39,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 
 // Import specialized form
-import { SpecializedEditForm } from '@/src/components/specialized-editors/specialized-edit-form';
+import { SpecializedEditForm } from '@/components/features/specialized-editors/specialized-edit-form';
 
 // Dynamically import Monaco Editor to avoid SSR issues
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
