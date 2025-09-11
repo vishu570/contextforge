@@ -71,7 +71,7 @@ const promptSchema = z.object({
   })),
   testCases: z.array(z.object({
     name: z.string(),
-    inputs: z.record(z.any())
+    inputs: z.record(z.string(), z.any())
   }))
 })
 
@@ -267,7 +267,7 @@ export function PromptEditor({
       const result = await onTest(testCase)
       setTestResults(prev => ({
         ...prev,
-        [testCase.id]: {
+        [testCase.id || testCase.name]: {
           ...result,
           executedAt: new Date(),
           passed: true // Would be determined by actual test logic
@@ -276,8 +276,8 @@ export function PromptEditor({
     } catch (error) {
       setTestResults(prev => ({
         ...prev,
-        [testCase.id]: {
-          error: error.message,
+        [testCase.id || testCase.name]: {
+          error: error instanceof Error ? error.message : 'An unknown error occurred',
           executedAt: new Date(),
           passed: false
         }
@@ -469,7 +469,7 @@ export function PromptEditor({
                         <div key={variable.name} className="flex items-center space-x-2">
                           <Label className="w-20 text-sm">{variable.name}:</Label>
                           <Input
-                            size="sm"
+                            className="h-8 text-sm"
                             value={variableInputs[variable.name] || ''}
                             onChange={(e) => setVariableInputs(prev => ({
                               ...prev,
@@ -578,14 +578,14 @@ export function PromptEditor({
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center space-x-2">
                               <h4 className="font-semibold">{testCase.name}</h4>
-                              {testResults[testCase.id]?.passed !== undefined && (
-                                <Badge variant={testResults[testCase.id].passed ? "default" : "destructive"}>
-                                  {testResults[testCase.id].passed ? (
+                              {testResults[testCase.id || testCase.name]?.passed !== undefined && (
+                                <Badge variant={testResults[testCase.id || testCase.name].passed ? "default" : "destructive"}>
+                                  {testResults[testCase.id || testCase.name].passed ? (
                                     <CheckCircle className="h-3 w-3 mr-1" />
                                   ) : (
                                     <AlertTriangle className="h-3 w-3 mr-1" />
                                   )}
-                                  {testResults[testCase.id].passed ? 'Passed' : 'Failed'}
+                                  {testResults[testCase.id || testCase.name].passed ? 'Passed' : 'Failed'}
                                 </Badge>
                               )}
                             </div>
@@ -608,13 +608,13 @@ export function PromptEditor({
                             </div>
                           </div>
                           
-                          {testResults[testCase.id] && (
+                          {testResults[testCase.id || testCase.name] && (
                             <div className="mt-3 space-y-2">
                               <Label className="text-sm font-semibold">Test Result:</Label>
                               <div className="bg-muted p-3 rounded text-sm">
-                                {testResults[testCase.id].error ? (
+                                {testResults[testCase.id || testCase.name].error ? (
                                   <div className="text-red-600">
-                                    Error: {testResults[testCase.id].error}
+                                    Error: {testResults[testCase.id || testCase.name].error}
                                   </div>
                                 ) : (
                                   <div className="text-green-600">
@@ -622,7 +622,7 @@ export function PromptEditor({
                                   </div>
                                 )}
                                 <div className="text-xs text-muted-foreground mt-1">
-                                  Executed at: {testResults[testCase.id].executedAt?.toLocaleString()}
+                                  Executed at: {testResults[testCase.id || testCase.name].executedAt?.toLocaleString()}
                                 </div>
                               </div>
                             </div>
@@ -704,7 +704,7 @@ export function PromptEditor({
                               {variant.active && <Badge variant="default">Active</Badge>}
                               {variant.metrics && (
                                 <Badge variant="outline">
-                                  Score: {Math.round(variant.metrics.qualityScore)}%
+                                  Score: {Math.round(variant.metrics.qualityScore || 0)}%
                                 </Badge>
                               )}
                             </div>
@@ -732,7 +732,7 @@ export function PromptEditor({
                             </pre>
                           </div>
                           <div className="mt-2 text-xs text-muted-foreground">
-                            Created: {variant.createdAt.toLocaleString()}
+                            Created: {variant.createdAt?.toLocaleString() || 'Unknown'}
                           </div>
                         </CardContent>
                       </Card>
@@ -767,10 +767,10 @@ export function PromptEditor({
                           </div>
                           
                           <div className="space-y-1">
-                            <div className="text-xs">Max Tokens: {model.capabilities.maxTokens}</div>
+                            <div className="text-xs">Max Tokens: {model.maxTokens}</div>
                             <div className="text-xs">
-                              Features: {model.capabilities.reasoning ? 'Reasoning' : ''} 
-                              {model.capabilities.codeGeneration ? ' Code' : ''}
+                              Features: {model.capabilities.includes('reasoning') ? 'Reasoning' : ''} 
+                              {model.capabilities.includes('code') ? ' Code' : ''}
                             </div>
                           </div>
                           
@@ -815,15 +815,15 @@ export function PromptEditor({
                           <div className="text-sm text-muted-foreground">Quality Score</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold">{performanceMetrics.responseTime}ms</div>
+                          <div className="text-2xl font-bold">{performanceMetrics.averageResponseTime}ms</div>
                           <div className="text-sm text-muted-foreground">Response Time</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold">{performanceMetrics.tokenUsage.total}</div>
+                          <div className="text-2xl font-bold">{performanceMetrics.tokenUsage}</div>
                           <div className="text-sm text-muted-foreground">Total Tokens</div>
                         </div>
                         <div className="text-center">
-                          <div className="text-2xl font-bold">${performanceMetrics.costEstimate.toFixed(4)}</div>
+                          <div className="text-2xl font-bold">${performanceMetrics.costPerRequest.toFixed(4)}</div>
                           <div className="text-sm text-muted-foreground">Est. Cost</div>
                         </div>
                       </div>

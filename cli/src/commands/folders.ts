@@ -117,9 +117,11 @@ export const foldersCommand = new Command('folders')
           }
 
           console.log(chalk.green('✓ Folder created successfully!'));
-          console.log(`${chalk.cyan('ID:')} ${result.data.id}`);
-          console.log(`${chalk.cyan('Name:')} ${result.data.name}`);
-          console.log(`${chalk.cyan('Path:')} ${result.data.path}`);
+          if (result.data) {
+            console.log(`${chalk.cyan('ID:')} ${result.data.id}`);
+            console.log(`${chalk.cyan('Name:')} ${result.data.name}`);
+            console.log(`${chalk.cyan('Path:')} ${result.data.path}`);
+          }
         } catch (error) {
           console.error(chalk.red('Error creating folder:'), error);
           process.exit(1);

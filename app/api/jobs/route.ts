@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getUserFromToken } from '@/lib/auth';
 import { z } from 'zod';
 import { jobQueue } from '@/lib/queue';
 import { JobType, JobPriority } from '@/lib/queue/types';
 
 const CreateJobSchema = z.object({
   type: z.nativeEnum(JobType),
-  data: z.record(z.any()),
+  data: z.record(z.string(), z.any()),
   priority: z.nativeEnum(JobPriority).optional(),
   delay: z.number().optional(),
   retries: z.number().optional(),
@@ -20,8 +20,13 @@ const BatchCreateJobsSchema = z.object({
 // GET /api/jobs - Get user's jobs
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -57,8 +62,13 @@ export async function GET(request: NextRequest) {
 // POST /api/jobs - Create a new job
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -120,7 +130,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

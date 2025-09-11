@@ -403,8 +403,7 @@ export function RealtimeMetrics({
             </div>
             <Progress 
               value={data.systemMetrics.errorRate * 100} 
-              className="mt-2"
-              variant={data.systemMetrics.errorRate > 0.05 ? "destructive" : "default"}
+              className={`mt-2 ${data.systemMetrics.errorRate > 0.05 ? 'bg-red-100' : ''}`}
             />
           </CardContent>
         </Card>

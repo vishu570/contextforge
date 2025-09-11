@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 
 const autosaveSchema = z.object({
   content: z.string(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   version: z.number().optional(),
   lastModified: z.string().optional()
 });
@@ -50,17 +50,20 @@ export async function POST(
 
     // In a real implementation, this would use a separate autosave table
     // For now, we'll store it as metadata on the item
+    const existingMetadata = existingItem.metadata ? JSON.parse(existingItem.metadata) : {};
+    const updatedMetadata = {
+      ...existingMetadata,
+      autosave: {
+        content: validatedData.content,
+        savedAt: new Date().toISOString(),
+        version: validatedData.version || 1
+      }
+    };
+
     const updatedItem = await prisma.item.update({
       where: { id },
       data: {
-        metadata: {
-          ...existingItem.metadata,
-          autosave: {
-            content: validatedData.content,
-            savedAt: new Date().toISOString(),
-            version: validatedData.version || 1
-          }
-        },
+        metadata: JSON.stringify(updatedMetadata),
         updatedAt: new Date()
       }
     });
@@ -78,7 +81,7 @@ export async function POST(
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid autosave data', details: error.errors },
+        { error: 'Invalid autosave data', details: error.issues },
         { status: 400 }
       );
     }
@@ -114,7 +117,8 @@ export async function GET(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const autosave = item.metadata?.autosave;
+    const metadata = item.metadata ? JSON.parse(item.metadata) : {};
+    const autosave = metadata.autosave;
     
     if (!autosave) {
       return NextResponse.json({ 
@@ -168,13 +172,13 @@ export async function DELETE(
     }
 
     // Remove autosave from metadata
-    const updatedMetadata = { ...item.metadata };
-    delete updatedMetadata.autosave;
+    const metadata = item.metadata ? JSON.parse(item.metadata) : {};
+    delete metadata.autosave;
 
     await prisma.item.update({
       where: { id },
       data: {
-        metadata: updatedMetadata,
+        metadata: JSON.stringify(metadata),
         updatedAt: new Date()
       }
     });

@@ -1,15 +1,6 @@
 'use client';
 
-import { EditorTab } from '@/types/editor';
-import { 
-  Save, 
-  Menu, 
-  Play, 
-  Download, 
-  User,
-  LogOut,
-  Upload
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,7 +9,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
+import { EditorTab } from '@/editor';
+import {
+  Download,
+  LogOut,
+  Menu,
+  Play,
+  Save,
+  Upload,
+  User
+} from 'lucide-react';
 import Link from 'next/link';
 
 interface EditorToolbarProps {
@@ -28,15 +28,15 @@ interface EditorToolbarProps {
   sidebarExpanded: boolean;
 }
 
-export function EditorToolbar({ 
-  activeTab, 
-  onSave, 
-  onToggleSidebar, 
-  sidebarExpanded 
+export function EditorToolbar({
+  activeTab,
+  onSave,
+  onToggleSidebar,
+  sidebarExpanded
 }: EditorToolbarProps) {
   const exportContent = () => {
     if (!activeTab) return;
-    
+
     const blob = new Blob([activeTab.content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -89,7 +89,7 @@ export function EditorToolbar({
               Import
             </Button>
           </Link>
-          
+
           {/* File actions - only show when active tab */}
           {activeTab && (
             <>
@@ -103,7 +103,7 @@ export function EditorToolbar({
                 <Save className="h-3 w-3 mr-1" />
                 Save
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -113,7 +113,7 @@ export function EditorToolbar({
                 <Play className="h-3 w-3 mr-1" />
                 Run
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"

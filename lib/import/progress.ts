@@ -31,6 +31,13 @@ export function updateProgress(
   const updated = { ...current, ...update };
   progressStore.set(importId, updated);
   
+  // Debug logging
+  console.log(`Progress update for ${importId}:`, {
+    progress: updated.progress,
+    message: updated.message,
+    currentFile: updated.currentFile
+  });
+  
   // Clean up completed/failed imports after 5 minutes
   if (updated.status === 'completed' || updated.status === 'failed') {
     setTimeout(() => {

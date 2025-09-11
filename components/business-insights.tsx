@@ -148,7 +148,7 @@ export function BusinessInsights({
     if (!data) return {};
 
     // Use actual ROI progression data from API if available
-    const roiProgression = data.roiProgression || [];
+    const roiProgression = (data as any).roiProgression || [];
 
     // Efficiency metrics comparison
     const efficiencyComparison = [
@@ -443,16 +443,16 @@ export function BusinessInsights({
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={chartData.costBreakdown}
+                      data={chartData.costBreakdown || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
+                      label={({ category, percent }) => `${category} ${((percent || 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {chartData.costBreakdown.map((entry, index) => (
+                      {(chartData.costBreakdown || []).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>

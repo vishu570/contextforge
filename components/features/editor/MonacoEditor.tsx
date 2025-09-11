@@ -155,7 +155,7 @@ export function MonacoEditor({
           wordWrap: 'on',
           lineNumbers: 'on',
           folding: true,
-          bracketMatching: 'always',
+          matchBrackets: 'always',
           renderLineHighlight: 'line',
           selectOnLineNumbers: true,
           smoothScrolling: true,

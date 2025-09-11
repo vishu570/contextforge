@@ -1,26 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { FileTreeItem } from '@/types/editor';
-import { 
-  FileText, 
-  Bot, 
-  FileCode, 
-  Webhook, 
-  Plus, 
-  MoreVertical,
-  Search,
-  Filter
-} from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -28,7 +17,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { FileTreeItem } from '@/editor';
+import {
+  Bot,
+  FileCode,
+  FileText,
+  Filter,
+  MoreVertical,
+  Plus,
+  Search,
+  Webhook
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface FileTreeProps {
   items: FileTreeItem[];
@@ -69,21 +69,21 @@ const typeBadgeColors = {
 function formatTimeAgo(date: Date): string {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) return 'now';
-  
+
   const diffInMinutes = Math.floor(diffInSeconds / 60);
   if (diffInMinutes < 60) return `${diffInMinutes}m`;
-  
+
   const diffInHours = Math.floor(diffInMinutes / 60);
   if (diffInHours < 24) return `${diffInHours}h`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) return `${diffInDays}d`;
-  
+
   const diffInWeeks = Math.floor(diffInDays / 7);
   if (diffInWeeks < 4) return `${diffInWeeks}w`;
-  
+
   const diffInMonths = Math.floor(diffInDays / 30);
   return `${diffInMonths}mo`;
 }
@@ -130,11 +130,11 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
   const filteredGroupedItems = Object.entries(groupedItems).reduce((acc, [folder, folderItems]) => {
     const filtered = folderItems.filter(item => {
       const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           item.content.toLowerCase().includes(searchQuery.toLowerCase());
+        item.content.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === 'all' || item.type === filterType;
       return matchesSearch && matchesType;
     });
-    
+
     if (filtered.length > 0) {
       acc[folder] = filtered;
     }
@@ -235,7 +235,7 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <span className="text-xs text-gray-500">Sort:</span>
           <Select value={sortBy} onValueChange={(value: 'name' | 'updated' | 'type') => setSortBy(value)}>
@@ -304,11 +304,10 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
                       return (
                         <div
                           key={item.id}
-                          className={`flex items-center group rounded px-2 py-1.5 cursor-pointer transition-colors ${
-                            isSelected 
-                              ? 'bg-blue-600/20 border border-blue-500/30' 
+                          className={`flex items-center group rounded px-2 py-1.5 cursor-pointer transition-colors ${isSelected
+                              ? 'bg-blue-600/20 border border-blue-500/30'
                               : 'hover:bg-gray-800/50'
-                          }`}
+                            }`}
                           onClick={() => {
                             setSelectedItemId(item.id);
                             onFileSelect(item);
@@ -324,12 +323,12 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
                                 {timeAgo}
                               </div>
                             </div>
-                            
+
                             {/* Content preview */}
                             <div className="text-xs text-gray-500 truncate mt-0.5">
                               {item.content.slice(0, 60)}...
                             </div>
-                            
+
                             {/* Tags */}
                             {item.tags && item.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
@@ -365,13 +364,13 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
                               <DropdownMenuItem onClick={() => onFileSelect(item)}>
                                 Open
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => navigator.clipboard.writeText(item.content)}
                               >
                                 Copy Content
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => {
                                   const newName = prompt('Enter new name:', item.name);
                                   if (newName && newName !== item.name) {
@@ -381,7 +380,7 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
                               >
                                 Rename
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   if (confirm(`Are you sure you want to delete "${item.name}"?`)) {

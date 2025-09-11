@@ -80,10 +80,12 @@ export class OpenAIProvider implements AIProvider {
       }
     } catch (error) {
       throw new ProviderError(
-        `OpenAI optimization failed: ${error.message}`,
+        `OpenAI optimization failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
         this.name,
-        error.code,
-        error.status
+        (error as any).code,
+        (error as any).status
       )
     }
   }
@@ -113,10 +115,12 @@ export class OpenAIProvider implements AIProvider {
       return this.parseCategories(result, options.maxSuggestions || 5)
     } catch (error) {
       throw new ProviderError(
-        `OpenAI categorization failed: ${error.message}`,
+        `OpenAI categorization failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
         this.name,
-        error.code,
-        error.status
+        (error as any).code,
+        (error as any).status
       )
     }
   }
@@ -134,10 +138,12 @@ export class OpenAIProvider implements AIProvider {
       return response.data[0].embedding
     } catch (error) {
       throw new ProviderError(
-        `OpenAI embedding failed: ${error.message}`,
+        `OpenAI embedding failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
         this.name,
-        error.code,
-        error.status
+        (error as any).code,
+        (error as any).status
       )
     }
   }
@@ -219,7 +225,8 @@ export class OpenAIProvider implements AIProvider {
       "gpt-4o-mini": { input: 0.00015 / 1000, output: 0.0006 / 1000 },
     }
 
-    const rates = pricing[model] || pricing["gpt-4o-mini"]
+    const rates =
+      pricing[model as keyof typeof pricing] || pricing["gpt-4o-mini"]
     return tokenUsage.input * rates.input + tokenUsage.output * rates.output
   }
 }

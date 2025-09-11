@@ -1,18 +1,17 @@
 'use client';
 
-import { FileTreeItem } from '@/types/editor';
-import { 
-  FileText, 
-  Bot, 
-  FileCode, 
-  Webhook, 
-  Plus,
-  Zap,
-  Clock,
-  Star
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileTreeItem } from '@/editor';
+import {
+  Bot,
+  Clock,
+  FileCode,
+  FileText,
+  Star,
+  Webhook,
+  Zap
+} from 'lucide-react';
 
 interface WelcomeScreenProps {
   fileTree: FileTreeItem[];
@@ -89,7 +88,7 @@ export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile }: WelcomeS
             Welcome to ContextForge
           </h1>
           <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-            Your professional AI context management workspace. Create, edit, and organize 
+            Your professional AI context management workspace. Create, edit, and organize
             your prompts, agents, and templates in a powerful code editor environment.
           </p>
         </div>
@@ -143,7 +142,7 @@ export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile }: WelcomeS
                   {recentFiles.map((file) => {
                     const Icon = typeIcons[file.type];
                     const iconColor = typeColors[file.type];
-                    
+
                     return (
                       <Button
                         key={file.id}
@@ -182,7 +181,7 @@ export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile }: WelcomeS
               <FileText className="h-12 w-12 mx-auto text-blue-400 mb-4" />
               <h3 className="font-semibold text-white mb-2">Professional Editor</h3>
               <p className="text-sm text-gray-400">
-                Monaco-powered code editor with syntax highlighting, 
+                Monaco-powered code editor with syntax highlighting,
                 auto-completion, and keyboard shortcuts.
               </p>
             </CardContent>
@@ -193,7 +192,7 @@ export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile }: WelcomeS
               <Star className="h-12 w-12 mx-auto text-green-400 mb-4" />
               <h3 className="font-semibold text-white mb-2">Multi-Tab Editing</h3>
               <p className="text-sm text-gray-400">
-                Work with multiple files simultaneously, just like 
+                Work with multiple files simultaneously, just like
                 in your favorite IDE.
               </p>
             </CardContent>
@@ -204,7 +203,7 @@ export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile }: WelcomeS
               <Zap className="h-12 w-12 mx-auto text-orange-400 mb-4" />
               <h3 className="font-semibold text-white mb-2">Smart Organization</h3>
               <p className="text-sm text-gray-400">
-                Organize your AI contexts with folders, tags, and 
+                Organize your AI contexts with folders, tags, and
                 powerful search capabilities.
               </p>
             </CardContent>

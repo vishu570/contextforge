@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { EnhancedLLMService } from '@/lib/specialized/ai-integrations/enhanced-llm-service';
-import { getServerSession } from 'next-auth';
+import { getUserFromToken } from '@/lib/auth';
 import { z } from 'zod';
 
 const testRequestSchema = z.object({
@@ -13,7 +13,7 @@ const testRequestSchema = z.object({
     frequencyPenalty: z.number().optional(),
     presencePenalty: z.number().optional(),
   })),
-  variables: z.record(z.any()).optional(),
+  variables: z.record(z.string(), z.any()).optional(),
   functions: z.array(z.object({
     name: z.string(),
     description: z.string(),
@@ -23,8 +23,8 @@ const testRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const token = request.cookies.get('auth-token')?.value; if (!token) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); } const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const { prompt, modelConfigs, variables = {}, functions = [] } = testRequestSchema.parse(body);
 
     // Initialize LLM service
-    const llmService = new EnhancedLLMService(session.user.email);
+    const llmService = new EnhancedLLMService(user.email);
 
     // Interpolate variables in prompt
     let interpolatedPrompt = prompt;
@@ -110,9 +110,9 @@ export async function POST(request: NextRequest) {
       totalTests: processedResults.length,
       successful: successfulResults.length,
       failed: processedResults.length - successfulResults.length,
-      totalCost: successfulResults.reduce((sum, r) => sum + (r.cost || 0), 0),
+      totalCost: successfulResults.reduce((sum, r) => sum + ('cost' in r ? (r.cost || 0) : 0), 0),
       averageDuration: successfulResults.reduce((sum, r) => sum + r.duration, 0) / Math.max(successfulResults.length, 1),
-      totalTokens: successfulResults.reduce((sum, r) => sum + (r.usage?.totalTokens || 0), 0),
+      totalTokens: successfulResults.reduce((sum, r) => sum + ('usage' in r ? (r.usage?.totalTokens || 0) : 0), 0),
     };
 
     return NextResponse.json({
@@ -133,8 +133,8 @@ export async function POST(request: NextRequest) {
 // Compare multiple prompts
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const token = request.cookies.get('auth-token')?.value; if (!token) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); } const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -147,7 +147,7 @@ export async function PUT(request: NextRequest) {
       modelId: z.string(),
     }).parse(body);
 
-    const llmService = new EnhancedLLMService(session.user.email);
+    const llmService = new EnhancedLLMService(user.email);
     
     const comparison = await llmService.compareModels(
       prompts[0], // Use first prompt as reference

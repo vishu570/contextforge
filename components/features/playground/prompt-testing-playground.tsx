@@ -669,7 +669,7 @@ export function PromptTestingPlayground({
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={autoAnalysis}
-                    onCheckedChange={setAutoAnalysis}
+                    onCheckedChange={(checked) => setAutoAnalysis(checked === true)}
                   />
                   <Label className="text-sm">Auto-analysis</Label>
                 </div>
@@ -677,7 +677,7 @@ export function PromptTestingPlayground({
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={realTimeUpdates}
-                    onCheckedChange={setRealTimeUpdates}
+                    onCheckedChange={(checked) => setRealTimeUpdates(checked === true)}
                   />
                   <Label className="text-sm">Real-time updates</Label>
                 </div>

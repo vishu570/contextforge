@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     start(controller) {
       const sendProgress = () => {
         const progress = getProgress(importId)
+        console.log(`SSE sending progress for ${importId}:`, progress)
         if (progress) {
           const data = `data: ${JSON.stringify(progress)}\n\n`
           controller.enqueue(encoder.encode(data))

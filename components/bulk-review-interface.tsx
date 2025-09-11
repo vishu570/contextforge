@@ -332,7 +332,7 @@ export function BulkReviewInterface({
                   <Checkbox
                     id="auto-advance"
                     checked={autoAdvance}
-                    onCheckedChange={setAutoAdvance}
+                    onCheckedChange={(checked) => setAutoAdvance(checked === true)}
                   />
                   <Label htmlFor="auto-advance" className="text-sm">
                     Auto-advance

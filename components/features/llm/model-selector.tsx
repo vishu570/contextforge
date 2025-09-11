@@ -1,37 +1,33 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
 import { getModelConfigs, ModelConfig } from '@/lib/models/config';
-import { 
-  Settings, 
-  Zap, 
-  DollarSign, 
-  Gauge, 
-  Brain, 
+import {
+  BarChart3,
+  Brain,
+  CheckCircle,
   Clock,
-  Shield,
+  DollarSign,
+  Gauge,
   Globe,
   Plus,
-  Edit,
-  Trash2,
-  AlertTriangle,
-  CheckCircle,
-  Info,
+  Settings,
+  Shield,
   Sparkles,
   Target,
-  BarChart3
+  Trash2,
+  Zap
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useEffect, useState } from 'react';
 
 export interface ModelSelection {
   modelId: string;
@@ -85,7 +81,7 @@ export function ModelSelector({
       presencePenalty: 0
     }
   );
-  
+
   const [showCustomModelDialog, setShowCustomModelDialog] = useState(false);
   const [newCustomModel, setNewCustomModel] = useState<Partial<CustomModel>>({});
   const [showPresetDialog, setShowPresetDialog] = useState(false);
@@ -93,13 +89,13 @@ export function ModelSelector({
   useEffect(() => {
     const systemModels = getModelConfigs();
     setModels(systemModels);
-    
+
     // Load custom models from localStorage
     const savedCustomModels = localStorage.getItem('contextforge-custom-models');
     if (savedCustomModels) {
       setCustomModels(JSON.parse(savedCustomModels));
     }
-    
+
     // Set default model if none selected
     if (!selection.modelId && systemModels.length > 0) {
       const defaultModel = systemModels.find(m => m.isDefault) || systemModels[0];
@@ -172,10 +168,10 @@ export function ModelSelector({
     const updatedCustomModels = [...customModels, customModel];
     setCustomModels(updatedCustomModels);
     localStorage.setItem('contextforge-custom-models', JSON.stringify(updatedCustomModels));
-    
+
     setShowCustomModelDialog(false);
     setNewCustomModel({});
-    
+
     toast({
       title: 'Success',
       description: 'Custom model added successfully'
@@ -186,7 +182,7 @@ export function ModelSelector({
     const updatedCustomModels = customModels.filter(m => m.id !== modelId);
     setCustomModels(updatedCustomModels);
     localStorage.setItem('contextforge-custom-models', JSON.stringify(updatedCustomModels));
-    
+
     toast({
       title: 'Success',
       description: 'Custom model removed'
@@ -225,7 +221,7 @@ export function ModelSelector({
     if (preset) {
       setSelection(prev => ({ ...prev, ...preset }));
       setShowPresetDialog(false);
-      
+
       toast({
         title: 'Preset Applied',
         description: `${presetName} preset has been applied`
@@ -248,7 +244,7 @@ export function ModelSelector({
                 Choose and configure your AI model
               </CardDescription>
             </div>
-            
+
             <div className="flex space-x-2">
               {allowCustomModels && (
                 <Button
@@ -263,7 +259,7 @@ export function ModelSelector({
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Main Model Selector */}
           <div className="space-y-2">
@@ -308,7 +304,7 @@ export function ModelSelector({
                       <div className="text-muted-foreground">${selectedModelConfig.cost}/1K tokens</div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Gauge className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -316,7 +312,7 @@ export function ModelSelector({
                       <div className="text-muted-foreground">{selectedModelConfig.maxTokens.toLocaleString()}</div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -326,7 +322,7 @@ export function ModelSelector({
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Shield className="h-4 w-4 text-muted-foreground" />
                     <div>
@@ -335,7 +331,7 @@ export function ModelSelector({
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Capabilities */}
                 {selectedModelConfig.capabilities && selectedModelConfig.capabilities.length > 0 && (
                   <div className="mt-4">
@@ -383,7 +379,7 @@ export function ModelSelector({
                   Fine-tune model parameters for optimal results
                 </CardDescription>
               </div>
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -394,7 +390,7 @@ export function ModelSelector({
               </Button>
             </div>
           </CardHeader>
-          
+
           <CardContent className="space-y-6">
             {/* Temperature */}
             <div className="space-y-2">
@@ -421,9 +417,9 @@ export function ModelSelector({
               <Input
                 type="number"
                 value={selection.maxTokens}
-                onChange={(e) => setSelection(prev => ({ 
-                  ...prev, 
-                  maxTokens: parseInt(e.target.value) || 1000 
+                onChange={(e) => setSelection(prev => ({
+                  ...prev,
+                  maxTokens: parseInt(e.target.value) || 1000
                 }))}
                 min={1}
                 max={selectedModelConfig?.maxTokens || 8192}
@@ -556,7 +552,7 @@ export function ModelSelector({
               Configure a custom AI model endpoint
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Model Name</Label>
@@ -566,7 +562,7 @@ export function ModelSelector({
                 placeholder="My Custom Model"
               />
             </div>
-            
+
             <div>
               <Label>API Endpoint</Label>
               <Input
@@ -575,7 +571,7 @@ export function ModelSelector({
                 placeholder="https://api.example.com/v1/chat/completions"
               />
             </div>
-            
+
             <div>
               <Label>API Key (Optional)</Label>
               <Input
@@ -585,34 +581,34 @@ export function ModelSelector({
                 placeholder="Your API key"
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Max Tokens</Label>
                 <Input
                   type="number"
                   value={newCustomModel.maxTokens || 4096}
-                  onChange={(e) => setNewCustomModel(prev => ({ 
-                    ...prev, 
-                    maxTokens: parseInt(e.target.value) || 4096 
+                  onChange={(e) => setNewCustomModel(prev => ({
+                    ...prev,
+                    maxTokens: parseInt(e.target.value) || 4096
                   }))}
                 />
               </div>
-              
+
               <div>
                 <Label>Cost per 1K tokens</Label>
                 <Input
                   type="number"
                   step="0.001"
                   value={newCustomModel.costPer1K || 0.002}
-                  onChange={(e) => setNewCustomModel(prev => ({ 
-                    ...prev, 
-                    costPer1K: parseFloat(e.target.value) || 0.002 
+                  onChange={(e) => setNewCustomModel(prev => ({
+                    ...prev,
+                    costPer1K: parseFloat(e.target.value) || 0.002
                   }))}
                 />
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button
                 variant="outline"
@@ -637,7 +633,7 @@ export function ModelSelector({
               Choose a preset configuration optimized for different use cases
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               {

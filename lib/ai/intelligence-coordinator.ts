@@ -91,7 +91,7 @@ export class IntelligenceCoordinator {
           );
           results.embedding = embeddingResult;
         } catch (error) {
-          errors.push(`Embedding generation failed: ${error.message}`);
+          errors.push(`Embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -104,7 +104,7 @@ export class IntelligenceCoordinator {
           );
           results.analysis = analysisResult;
         } catch (error) {
-          errors.push(`Content analysis failed: ${error.message}`);
+          errors.push(`Content analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -122,7 +122,7 @@ export class IntelligenceCoordinator {
           }
           results.optimizations = optimizations;
         } catch (error) {
-          errors.push(`Model optimization failed: ${error.message}`);
+          errors.push(`Model optimization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -141,7 +141,7 @@ export class IntelligenceCoordinator {
           jobIds.push(clusterJobId);
           results.clusteringJobId = clusterJobId;
         } catch (error) {
-          errors.push(`Clustering update failed: ${error.message}`);
+          errors.push(`Clustering update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       }
 
@@ -159,7 +159,7 @@ export class IntelligenceCoordinator {
       return {
         success: false,
         results,
-        errors: [...errors, error.message],
+        errors: [...errors, error instanceof Error ? error.message : 'Unknown error'],
         processingTime,
         jobIds,
       };
@@ -210,7 +210,7 @@ export class IntelligenceCoordinator {
         jobIds.push(jobId);
         processedItems += batch.length;
       } catch (error) {
-        errors.push(`Batch ${i / batchSize + 1} failed: ${error.message}`);
+        errors.push(`Batch ${i / batchSize + 1} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 

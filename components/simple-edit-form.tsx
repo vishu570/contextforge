@@ -35,7 +35,7 @@ const editItemSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   content: z.string().min(1, 'Content is required'),
   format: z.string(),
-  tags: z.array(z.string()).default([]),
+  tags: z.array(z.string()),
 });
 
 type EditItemFormData = z.infer<typeof editItemSchema>;
@@ -69,7 +69,7 @@ export function SimpleEditForm({ item, availableTags, type, userId }: SimpleEdit
       name: item.name || '',
       content: item.content || '',
       format: item.format || (formatOptions[item.type as keyof typeof formatOptions]?.[0] || '.txt'),
-      tags: selectedTags,
+      tags: selectedTags || [],
     },
   });
 

@@ -1,24 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Menu, X, FileText } from 'lucide-react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { EditorActions, EditorState } from '@/editor';
+import { FileText, Menu, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { FileTree } from './FileTree';
-import { TabsManager } from './TabsManager';
 import { MonacoEditor } from './MonacoEditor';
-import { EditorToolbar } from './EditorToolbar';
+import { TabsManager } from './TabsManager';
 import { WelcomeScreen } from './WelcomeScreen';
-import { EditorState, EditorActions } from '@/types/editor';
-import { cn } from '@/lib/utils';
 
 interface ResponsiveMobileProps {
   state: EditorState;
   actions: EditorActions;
 }
 
-export function ResponsiveMobile({ 
-  state, 
+export function ResponsiveMobile({
+  state,
   actions
 }: ResponsiveMobileProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -49,7 +47,7 @@ export function ResponsiveMobile({
           >
             <Menu className="h-4 w-4" />
           </Button>
-          
+
           {activeTab && (
             <div className="flex items-center space-x-2 text-sm">
               <FileText className="h-4 w-4 text-muted-foreground" />
@@ -92,10 +90,10 @@ export function ResponsiveMobile({
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {/* File Tree */}
             <div className="flex-1 overflow-y-auto">
-              <FileTree 
+              <FileTree
                 items={state.fileTree}
                 onFileSelect={(file) => {
                   actions.openTab(file);
@@ -148,7 +146,7 @@ export function ResponsiveMobile({
                 </Button>
               </div>
             )}
-            
+
             <MonacoEditor
               value={activeTab.content}
               language={getLanguageFromType(activeTab.type)}
@@ -176,7 +174,7 @@ export function ResponsiveMobile({
               {activeTab.type}
             </span>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <Button
               variant="ghost"
@@ -202,6 +200,6 @@ function getLanguageFromType(type: string): string {
     snippet: 'plaintext',
     other: 'plaintext',
   };
-  
+
   return languageMap[type] || 'plaintext';
 }

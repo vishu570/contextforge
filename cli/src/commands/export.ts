@@ -154,7 +154,7 @@ async function exportMarkdown(items: ContextItem[], destination: string, options
   // Group by type
   const itemsByType = items.reduce((acc, item) => {
     if (!acc[item.type]) acc[item.type] = [];
-    acc[item.type].push(item);
+    acc[item.type]?.push(item);
     return acc;
   }, {} as Record<string, ContextItem[]>);
 
@@ -252,7 +252,7 @@ async function exportFiles(items: ContextItem[], destination: string, options: a
 
   const itemsByType = items.reduce((acc, item) => {
     if (!acc[item.type]) acc[item.type] = [];
-    acc[item.type].push(item);
+    acc[item.type]?.push(item);
     return acc;
   }, {} as Record<string, ContextItem[]>);
 

@@ -262,7 +262,7 @@ export function AgentEditor({ item, availableTools, onSave, onTest, readonly = f
       setTestResults(result);
     } catch (error) {
       console.error('Agent testing failed:', error);
-      setTestResults({ error: error.message });
+      setTestResults({ error: error instanceof Error ? error.message : 'An unknown error occurred' });
     } finally {
       setIsTestingAgent(false);
     }

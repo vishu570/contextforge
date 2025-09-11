@@ -48,7 +48,7 @@ import {
   Minimize2,
   Split,
   RefreshCw,
-  Compare,
+  ArrowLeftRight,
   TrendingUp,
   TrendingDown,
   Hash,

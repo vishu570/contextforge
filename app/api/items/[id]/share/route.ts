@@ -60,16 +60,19 @@ export async function POST(
       lastAccessedAt: null
     };
 
+    const existingMetadata = item.metadata ? JSON.parse(item.metadata) : {};
+    const updatedMetadata = {
+      ...existingMetadata,
+      shares: {
+        ...existingMetadata.shares,
+        [shareToken]: shareData
+      }
+    };
+
     const updatedItem = await prisma.item.update({
       where: { id },
       data: {
-        metadata: {
-          ...item.metadata,
-          shares: {
-            ...item.metadata?.shares,
-            [shareToken]: shareData
-          }
-        },
+        metadata: JSON.stringify(updatedMetadata),
         updatedAt: new Date()
       }
     });
@@ -86,7 +89,7 @@ export async function POST(
       expiresAt: expiresAt.toISOString(),
       item: {
         id: item.id,
-        title: item.title,
+        name: item.name,
         type: item.type
       }
     });
@@ -96,7 +99,7 @@ export async function POST(
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid share data', details: error.errors },
+        { error: 'Invalid share data', details: error.issues },
         { status: 400 }
       );
     }
@@ -132,7 +135,8 @@ export async function GET(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const shares = item.metadata?.shares || {};
+    const metadata = item.metadata ? JSON.parse(item.metadata) : {};
+    const shares = metadata.shares || {};
     const activeShares = Object.entries(shares)
       .filter(([token, share]: [string, any]) => {
         const expiresAt = new Date(share.expiresAt);
@@ -193,7 +197,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Item not found' }, { status: 404 });
     }
 
-    const shares = item.metadata?.shares || {};
+    const metadata = item.metadata ? JSON.parse(item.metadata) : {};
+    const shares = metadata.shares || {};
     if (!shares[shareToken]) {
       return NextResponse.json({ error: 'Share not found' }, { status: 404 });
     }
@@ -201,13 +206,15 @@ export async function DELETE(
     // Remove the share
     delete shares[shareToken];
 
+    const updatedMetadata = {
+      ...metadata,
+      shares
+    };
+
     await prisma.item.update({
       where: { id },
       data: {
-        metadata: {
-          ...item.metadata,
-          shares
-        },
+        metadata: JSON.stringify(updatedMetadata),
         updatedAt: new Date()
       }
     });

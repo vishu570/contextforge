@@ -165,14 +165,13 @@ export const authOptions: NextAuthOptions = {
       return token
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.userId as string
+      if (token && session.user) {
+        ;(session.user as any).id = token.userId as string
       }
       return session
     },
   },
   pages: {
     signIn: "/login",
-    signUp: "/register",
   },
 }

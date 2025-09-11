@@ -1,21 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import type { EditorActions, EditorLayoutProps, EditorState, EditorTab, FileTreeItem } from '@/editor';
+import { useToast } from '@/hooks/use-toast';
+import { useCallback, useEffect, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
-import { FileTree } from './FileTree';
-import { TabsManager } from './TabsManager';
-import { MonacoEditor } from './MonacoEditor';
 import { ComprehensiveEditor } from './ComprehensiveEditor';
 import { EditorToolbar } from './EditorToolbar';
-import { WelcomeScreen } from './WelcomeScreen';
+import { FileTree } from './FileTree';
 import { ResponsiveMobile } from './ResponsiveMobile';
-import { useToast } from '@/hooks/use-toast';
-import type { EditorState, EditorActions, EditorTab, FileTreeItem, EditorLayoutProps } from '@/types/editor';
+import { TabsManager } from './TabsManager';
+import { WelcomeScreen } from './WelcomeScreen';
 
 export function EditorLayout({ initialData }: EditorLayoutProps) {
   const { toast } = useToast();
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // Editor state
   const [state, setState] = useState<EditorState>({
     activeTabId: null,
@@ -42,7 +41,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
         const response = await fetch('/api/items', {
           credentials: 'include',
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           if (data?.items) {

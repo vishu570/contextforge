@@ -296,7 +296,7 @@ export function AnalyticsAlerts({ userId, className }: AnalyticsAlertsProps) {
 
   const AlertHistoryList = ({ userId, getSeverityIcon, getSeverityClass }: {
     userId: string;
-    getSeverityIcon: (severity: string) => JSX.Element;
+    getSeverityIcon: (severity: string) => React.ReactElement;
     getSeverityClass: (severity: string) => string;
   }) => {
     const [alertHistory, setAlertHistory] = useState<any[]>([]);

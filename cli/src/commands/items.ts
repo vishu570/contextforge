@@ -6,7 +6,7 @@ import { spawn } from 'child_process';
 import { api } from '../lib/api';
 import { ConfigManager } from '../lib/config';
 import { Formatters } from '../utils/formatters';
-import { ContextItem } from '../types';
+import { ContextItem, SearchOptions } from '../types';
 
 export const itemsCommand = new Command('items')
   .alias('item')
@@ -28,14 +28,14 @@ export const itemsCommand = new Command('items')
           const config = ConfigManager.getConfig();
           const format = options.format || config.defaultFormat;
 
-          const searchOptions = {
-            type: options.type ? [options.type] : undefined,
-            folderId: options.folder,
-            tags: options.tags ? options.tags.split(',').map((t: string) => t.trim()) : undefined,
+          const searchOptions: SearchOptions = {
+            ...(options.type && { type: [options.type] }),
+            ...(options.folder && { folderId: options.folder }),
+            ...(options.tags && { tags: options.tags.split(',').map((t: string) => t.trim()) }),
             limit: parseInt(options.limit),
             offset: parseInt(options.offset),
-            sortBy: options.sort,
-            sortOrder: options.order,
+            ...(options.sort && { sortBy: options.sort }),
+            ...(options.order && { sortOrder: options.order }),
           };
 
           const result = await api.getItems(searchOptions);
@@ -70,7 +70,9 @@ export const itemsCommand = new Command('items')
             process.exit(1);
           }
 
-          console.log(Formatters.formatSingleItem(result.data, format));
+          if (result.data) {
+            console.log(Formatters.formatSingleItem(result.data, format));
+          }
         } catch (error) {
           console.error(chalk.red('Error getting item:'), error);
           process.exit(1);
@@ -180,7 +182,9 @@ export const itemsCommand = new Command('items')
           }
 
           console.log(chalk.green('✓ Item created successfully!'));
-          console.log(Formatters.formatSingleItem(result.data));
+          if (result.data) {
+            console.log(Formatters.formatSingleItem(result.data));
+          }
         } catch (error) {
           console.error(chalk.red('Error creating item:'), error);
           process.exit(1);
@@ -222,7 +226,9 @@ export const itemsCommand = new Command('items')
             const editor = config.editor || process.env.EDITOR || 'nano';
             
             const tempFile = `/tmp/contextforge-edit-${Date.now()}.txt`;
-            await fs.writeFile(tempFile, currentItem.content);
+            if (currentItem) {
+              await fs.writeFile(tempFile, currentItem.content);
+            }
             
             const child = spawn(editor, [tempFile], { stdio: 'inherit' });
             await new Promise((resolve) => child.on('close', resolve));
@@ -246,7 +252,9 @@ export const itemsCommand = new Command('items')
           }
 
           console.log(chalk.green('✓ Item updated successfully!'));
-          console.log(Formatters.formatSingleItem(result.data));
+          if (result.data) {
+            console.log(Formatters.formatSingleItem(result.data));
+          }
         } catch (error) {
           console.error(chalk.red('Error editing item:'), error);
           process.exit(1);
@@ -273,7 +281,7 @@ export const itemsCommand = new Command('items')
               {
                 type: 'confirm',
                 name: 'confirmed',
-                message: `Are you sure you want to delete "${itemResult.data.name}"?`,
+                message: `Are you sure you want to delete "${itemResult.data?.name}"?`,
                 default: false,
               },
             ]);

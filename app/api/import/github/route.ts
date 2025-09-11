@@ -119,23 +119,61 @@ export async function POST(request: NextRequest) {
     const { decryptApiKey } = await import('@/lib/utils')
     const decryptedToken = decryptApiKey(githubApiKey.encryptedKey)
 
-    // Initialize GitHub processor with user's token
+    // Initialize GitHub processor and repository tracker with user's token
     const githubProcessor = new GitHubProcessor(decryptedToken)
+    const { createRepositoryTracker } = await import('@/lib/import/github/repository-tracker')
+    const repoTracker = createRepositoryTracker(decryptedToken)
 
     let importRecord: any = null
+    let source: any = null
 
     try {
-      // Create import record first to get importId for progress tracking
-      const source = await prisma.source.create({
-        data: {
-          type: 'github',
-          url: validatedData.url,
+      // Get or create repository tracking record
+      const trackingInfo = await repoTracker.getOrCreateRepositoryTracker(
+        repoOwner,
+        repoName,
+        validatedData.branch || 'main',
+        user.id
+      )
+
+      // Get the source record
+      source = await prisma.source.findUnique({
+        where: { id: trackingInfo.sourceId }
+      })
+
+      if (!source) {
+        throw new Error('Failed to create or find source record')
+      }
+
+      // Check if this is an incremental sync
+      const isIncrementalSync = !trackingInfo.isFirstSync && trackingInfo.lastCommitSha
+      
+      if (isIncrementalSync) {
+        // Check for changes since last sync
+        const changes = await repoTracker.getFileChangesSince(
           repoOwner,
           repoName,
-          branch: validatedData.branch || 'main',
-          pathGlob: validatedData.filters?.paths?.join(',')
+          validatedData.branch || 'main',
+          trackingInfo.lastCommitSha!,
+          validatedData.filters?.fileExtensions
+        )
+
+        if (!changes.hasChanges) {
+          // No changes detected, return early
+          return NextResponse.json({
+            importId: null,
+            status: 'up_to_date',
+            message: 'Repository is up to date, no changes detected',
+            total: 0,
+            imported: 0,
+            failed: 0,
+            stagedItems: 0,
+            repository: `${repoOwner}/${repoName}`,
+            branch: validatedData.branch,
+            lastCommitSha: changes.lastCommitSha
+          })
         }
-      })
+      }
 
       importRecord = await prisma.import.create({
         data: {
@@ -221,11 +259,31 @@ export async function POST(request: NextRequest) {
         processedFiles: importResult.imported
       })
 
-      // Create staged items for review
+      // Create staged items for review with duplicate detection
       const stagedItems = []
+      const { createDuplicateDetector } = await import('@/lib/import/duplicate-detector')
+      const duplicateDetector = createDuplicateDetector(user.id)
+      
       for (let i = 0; i < importResult.files.length; i++) {
         const file = importResult.files[i]
         try {
+          // Check for duplicates before creating staged item
+          const duplicateMatches = await duplicateDetector.checkForDuplicates(
+            file.content,
+            file.name,
+            user.id,
+            {
+              threshold: 0.8, // 80% similarity threshold
+              enableSemanticCheck: true,
+              enableStructuralCheck: true,
+              enableExactCheck: true,
+              maxCandidates: 3
+            }
+          )
+
+          const hasDuplicates = duplicateMatches.length > 0
+          const highestSimilarity = hasDuplicates ? Math.max(...duplicateMatches.map(m => m.similarity)) : 0
+          
           const stagedItem = await prisma.stagedItem.create({
             data: {
               importId: importRecord.id,
@@ -239,9 +297,23 @@ export async function POST(request: NextRequest) {
                 downloadUrl: file.downloadUrl,
                 githubPath: file.path,
                 repository: `${repoOwner}/${repoName}`,
-                branch: validatedData.branch
+                branch: validatedData.branch,
+                // Add duplicate detection results
+                duplicates: {
+                  detected: hasDuplicates,
+                  count: duplicateMatches.length,
+                  highest_similarity: highestSimilarity,
+                  matches: duplicateMatches.map(match => ({
+                    item_id: match.existingItemId,
+                    similarity: match.similarity,
+                    type: match.duplicateType,
+                    confidence: match.confidence,
+                    should_merge: match.shouldMerge,
+                    canonical_id: match.canonicalId
+                  }))
+                }
               }),
-              status: 'pending'
+              status: hasDuplicates && highestSimilarity > 0.95 ? 'duplicate_detected' : 'pending'
             }
           })
           stagedItems.push(stagedItem)
@@ -260,6 +332,19 @@ export async function POST(request: NextRequest) {
       }
 
       console.log(`Created ${stagedItems.length} staged items for review`)
+
+      // Update repository tracking with current commit SHA
+      const currentCommitSha = await repoTracker.getCurrentCommitSha(
+        repoOwner,
+        repoName,
+        validatedData.branch || 'main'
+      )
+      
+      await repoTracker.updateRepositoryState(
+        source.id,
+        currentCommitSha,
+        stagedItems.length
+      )
 
       // Final progress update
       updateProgress(importRecord.id, {
@@ -280,7 +365,9 @@ export async function POST(request: NextRequest) {
         stagedItems: stagedItems.length,
         errors: importResult.errors.length > 0 ? importResult.errors.slice(0, 5) : undefined,
         repository: `${repoOwner}/${repoName}`,
-        branch: validatedData.branch
+        branch: validatedData.branch,
+        lastCommitSha: currentCommitSha,
+        isTracked: true
       })
 
     } catch (githubError) {

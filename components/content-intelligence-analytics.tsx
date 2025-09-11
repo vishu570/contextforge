@@ -415,16 +415,16 @@ export function ContentIntelligenceAnalytics({
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={chartData.qualityDistribution}
+                      data={chartData.qualityDistribution || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, value }) => value > 0 ? `${name}: ${value}` : ''}
+                      label={({ name, value }) => (value || 0) > 0 ? `${name}: ${value || 0}` : ''}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {chartData.qualityDistribution.map((entry, index) => (
+                      {(chartData.qualityDistribution || []).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -778,7 +778,7 @@ export function ContentIntelligenceAnalytics({
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {chartData.topicData.slice(0, 8).map((topic, index) => (
+                  {(chartData.topicData || []).slice(0, 8).map((topic, index) => (
                     <div key={topic.topic} className="flex items-center justify-between">
                       <span className="text-sm truncate flex-1">{topic.topic}</span>
                       <div className="flex items-center space-x-2">

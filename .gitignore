@@ -41,4 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# build artifacts
+/cli/dist/
+*.js.map
+*.d.ts.map
+
 /lib/generated/prisma

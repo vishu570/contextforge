@@ -131,17 +131,17 @@ export function SmartContextBoard({ userId }: SmartContextBoardProps) {
 
     // Create contexts from groups
     return Object.entries(groupedByType).map(([type, typeItems]) => {
-      const totalTokens = typeItems.reduce((sum, item) => sum + (item.tokenCount || 0), 0);
+      const totalTokens = (typeItems as ContextItem[]).reduce((sum, item) => sum + (item.tokenCount || 0), 0);
       const estimatedCost = (totalTokens * defaultModel.cost) / 1000;
       
       return {
         id: type,
         name: getContextName(type),
-        items: typeItems.slice(0, 5), // Show top 5 items
+        items: (typeItems as ContextItem[]).slice(0, 5), // Show top 5 items
         model: 'AI Model',
         totalTokens,
         estimatedCost,
-        lastActivity: getMostRecentActivity(typeItems)
+        lastActivity: getMostRecentActivity(typeItems as ContextItem[])
       };
     });
   };

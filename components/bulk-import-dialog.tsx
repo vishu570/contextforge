@@ -282,7 +282,7 @@ export function BulkImportDialog({ children }: { children: React.ReactNode }) {
                   <Checkbox
                     id="auto-detect"
                     checked={autoDetect}
-                    onCheckedChange={setAutoDetect}
+                    onCheckedChange={(checked) => setAutoDetect(checked === true)}
                   />
                   <Label htmlFor="auto-detect" className="text-sm">
                     Auto-detect format and types
@@ -294,7 +294,7 @@ export function BulkImportDialog({ children }: { children: React.ReactNode }) {
                     <Checkbox
                       id="skip-first-row"
                       checked={skipFirstRow}
-                      onCheckedChange={setSkipFirstRow}
+                      onCheckedChange={(checked) => setSkipFirstRow(checked === true)}
                     />
                     <Label htmlFor="skip-first-row" className="text-sm">
                       Skip first row (headers)
@@ -307,7 +307,7 @@ export function BulkImportDialog({ children }: { children: React.ReactNode }) {
                 <Checkbox
                   id="validate-only"
                   checked={validateOnly}
-                  onCheckedChange={setValidateOnly}
+                  onCheckedChange={(checked) => setValidateOnly(checked === true)}
                 />
                 <Label htmlFor="validate-only" className="text-sm">
                   Validate only (don't import)

@@ -58,11 +58,12 @@ export const healthCommand = new Command('health')
       console.log('');
       
       // Authentication test
+      let authTest: any = null;
       if (config.apiKey) {
         console.log(chalk.blue('Testing authentication...'));
         
         try {
-          const authTest = await api.getFolders();
+          authTest = await api.getFolders();
           if (authTest.error && authTest.status === 401) {
             console.log(chalk.red('✗ Authentication failed'));
             console.log(chalk.yellow('  Your API key may be invalid or expired'));

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getUserFromToken } from '@/lib/auth';
 import { z } from 'zod';
 import { optimizationPipeline } from '@/lib/pipeline/optimization-pipeline';
 
@@ -27,8 +27,8 @@ const ProcessCollectionSchema = z.object({
 // POST /api/pipeline/process - Process items through optimization pipeline
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
+    const token = request.cookies.get('auth-token')?.value; if (!token) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); } const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
     } catch (validationError) {
       if (validationError instanceof z.ZodError) {
         return NextResponse.json(
-          { error: 'Invalid request data', details: validationError.errors },
+          { error: 'Invalid request data', details: validationError.issues },
           { status: 400 }
         );
       }

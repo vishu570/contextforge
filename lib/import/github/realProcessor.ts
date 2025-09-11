@@ -270,6 +270,7 @@ export class GitHubProcessor {
         try {
           console.log(`Processing file: ${file.path}`);
           
+          // Update progress BEFORE processing each file
           onProgress?.({
             total: filteredFiles.length,
             processed: i,
@@ -280,8 +281,22 @@ export class GitHubProcessor {
           // Download file content
           let content = '';
           if (file.download_url) {
+            onProgress?.({
+              total: filteredFiles.length,
+              processed: i,
+              message: `Downloading ${file.name}...`,
+              currentFile: file.name
+            });
             content = await this.downloadFileContent(file.download_url);
           }
+
+          // Update progress after download
+          onProgress?.({
+            total: filteredFiles.length,
+            processed: i,
+            message: `Classifying ${file.name}...`,
+            currentFile: file.name
+          });
 
           // Classify file type
           const classification = this.classifyFileType(file.name, content);
@@ -296,11 +311,27 @@ export class GitHubProcessor {
           });
 
           imported++;
+          
+          // Update progress AFTER processing each file
+          onProgress?.({
+            total: filteredFiles.length,
+            processed: i + 1,
+            message: `Completed ${file.name} (${i + 1}/${filteredFiles.length})`,
+            currentFile: file.name
+          });
         } catch (error) {
           failed++;
           const errorMsg = `Failed to process ${file.path}: ${error instanceof Error ? error.message : 'Unknown error'}`;
           errors.push(errorMsg);
           console.error(errorMsg);
+          
+          // Update progress even on failure
+          onProgress?.({
+            total: filteredFiles.length,
+            processed: i + 1,
+            message: `Failed ${file.name} (${i + 1}/${filteredFiles.length})`,
+            currentFile: file.name
+          });
         }
       }
 

@@ -64,21 +64,23 @@ export const importCommand = new Command('import')
 
           importSpinner.succeed('Import completed');
           console.log(chalk.green('✓ File imported successfully!'));
-          console.log(`${chalk.cyan('ID:')} ${result.data.id}`);
+          if (result.data) {
+            console.log(`${chalk.cyan('ID:')} ${result.data.id}`);
 
-          // Post-processing
-          if (options.classify || options.optimize) {
-            const postSpinner = ora('Post-processing...').start();
-            
-            if (options.classify) {
-              await api.classifyItems([result.data.id]);
+            // Post-processing
+            if (options.classify || options.optimize) {
+              const postSpinner = ora('Post-processing...').start();
+              
+              if (options.classify) {
+                await api.classifyItems([result.data.id]);
+              }
+              
+              if (options.optimize) {
+                await api.optimizeItem(result.data.id);
+              }
+              
+              postSpinner.succeed('Post-processing completed');
             }
-            
-            if (options.optimize) {
-              await api.optimizeItem(result.data.id);
-            }
-            
-            postSpinner.succeed('Post-processing completed');
           }
         } catch (error) {
           console.error(chalk.red('Error importing file:'), error);
@@ -165,7 +167,7 @@ export const importCommand = new Command('import')
 
                 const itemData = {
                   name: `${fileName} (${relativePath})`,
-                  type: 'prompt',
+                  type: 'prompt' as const,
                   content,
                   folderId: options.folder,
                   metadata: {
@@ -180,9 +182,10 @@ export const importCommand = new Command('import')
                   throw new Error(result.error);
                 }
 
-                return { success: true, id: result.data.id, file };
+                return { success: true, id: result.data?.id, file };
               } catch (error) {
-                return { success: false, error: error.message, file };
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                return { success: false, error: errorMessage, file };
               }
             });
 
@@ -302,6 +305,10 @@ async function monitorJob(jobId: string) {
       }
 
       const job = result.data;
+      if (!job) {
+        spinner.fail('Job not found');
+        return;
+      }
       
       if (job.status === 'completed') {
         spinner.succeed('Import completed successfully');

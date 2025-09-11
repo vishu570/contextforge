@@ -621,7 +621,7 @@ export function AdvancedPromptEditor({
                             wordWrap: 'on',
                             lineNumbers: 'on',
                             folding: true,
-                            bracketMatching: 'always',
+                            matchBrackets: 'always',
                             automaticLayout: true,
                             theme: 'vs-dark',
                             readOnly: readonly,

@@ -1,8 +1,8 @@
 'use client';
 
-import { EditorTab } from '@/types/editor';
-import { X, FileText, Bot, FileCode, Webhook, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { EditorTab } from '@/editor';
+import { Bot, Circle, FileCode, FileText, Webhook, X } from 'lucide-react';
 
 interface TabsManagerProps {
   tabs: EditorTab[];
@@ -45,8 +45,8 @@ export function TabsManager({ tabs, activeTabId, onTabClick, onTabClose }: TabsM
             className={`
               flex items-center space-x-2 px-3 py-2 border-r border-gray-700 cursor-pointer
               min-w-0 max-w-xs group relative
-              ${isActive 
-                ? 'bg-[#0F1117] text-gray-100 border-b-2 border-blue-500' 
+              ${isActive
+                ? 'bg-[#0F1117] text-gray-100 border-b-2 border-blue-500'
                 : 'bg-[#1C2128] text-gray-300 hover:bg-gray-800/50'
               }
             `}
@@ -54,7 +54,7 @@ export function TabsManager({ tabs, activeTabId, onTabClick, onTabClose }: TabsM
           >
             {/* Type Icon */}
             <Icon className={`h-3 w-3 flex-shrink-0 ${iconColor}`} />
-            
+
             {/* Tab Title */}
             <span className="text-sm truncate min-w-0 flex-1">
               {tab.title}

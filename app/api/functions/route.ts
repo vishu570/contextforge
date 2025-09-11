@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import { getServerSession } from 'next-auth';
+// import { getUserFromToken } from '@/lib/auth';
 import { getUserFromToken } from '@/lib/auth';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
@@ -181,8 +181,8 @@ export async function GET(request: NextRequest) {
 // POST /api/functions - Create a new custom function
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const token = request.cookies.get('auth-token')?.value; if (!token) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); } const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
     // Check if function name already exists for this user
     const existingFunction = await prisma.customFunction.findFirst({
       where: {
-        userId: session.user.email,
+        userId: user.email,
         name: functionData.name,
       }
     });
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
     // Create the function
     const newFunction = await prisma.customFunction.create({
       data: {
-        userId: session.user.email,
+        userId: user.email,
         name: functionData.name,
         description: functionData.description,
         category: functionData.category,
@@ -238,7 +238,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }
@@ -257,8 +257,8 @@ export async function PUT(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const token = request.cookies.get('auth-token')?.value; if (!token) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); } const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -273,7 +273,7 @@ export async function PUT(
     const existingFunction = await prisma.customFunction.findFirst({
       where: {
         id: functionId,
-        userId: session.user.email,
+        userId: user.email,
       }
     });
 
@@ -306,7 +306,7 @@ export async function PUT(
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
+        { error: 'Validation failed', details: error.issues },
         { status: 400 }
       );
     }
@@ -325,8 +325,8 @@ export async function DELETE(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const token = request.cookies.get('auth-token')?.value; if (!token) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); } const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -339,7 +339,7 @@ export async function DELETE(
     const existingFunction = await prisma.customFunction.findFirst({
       where: {
         id: functionId,
-        userId: session.user.email,
+        userId: user.email,
       }
     });
 
@@ -374,8 +374,8 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
+    const token = request.cookies.get('auth-token')?.value; if (!token) { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); } const user = await getUserFromToken(token);
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -390,7 +390,7 @@ export async function PATCH(
     const customFunction = await prisma.customFunction.findFirst({
       where: {
         id: functionId,
-        userId: session.user.email,
+        userId: user.email,
       }
     });
 

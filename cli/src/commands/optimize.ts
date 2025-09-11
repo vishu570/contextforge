@@ -30,6 +30,10 @@ export const optimizeCommand = new Command('optimize')
           }
 
           const item = itemResult.data;
+          if (!item) {
+            spinner.fail('Item not found');
+            process.exit(1);
+          }
           spinner.succeed(`Found item: ${item.name}`);
 
           console.log(chalk.blue('Original content preview:'));
@@ -100,7 +104,7 @@ export const optimizeCommand = new Command('optimize')
               const updateResult = await api.updateItem(id, {
                 content: result.data.optimizedContent,
                 metadata: {
-                  ...item.metadata,
+                  ...(item?.metadata || {}),
                   optimized: true,
                   optimizedAt: new Date().toISOString(),
                   optimizationModel: options.model,
@@ -323,6 +327,10 @@ async function monitorOptimizationJob(jobId: string) {
       }
 
       const job = result.data;
+      if (!job) {
+        spinner.fail('Job not found');
+        return;
+      }
       
       if (job.status === 'completed') {
         spinner.succeed('Batch optimization completed');

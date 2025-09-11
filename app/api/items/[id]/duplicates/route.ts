@@ -40,21 +40,20 @@ export async function GET(
       },
       select: {
         id: true,
-        title: true,
+        name: true,
         content: true,
         type: true,
-        tags: true,
         createdAt: true,
         updatedAt: true
       }
     });
 
-    // Simple similarity calculation based on title and content
+    // Simple similarity calculation based on name and content
     const duplicates = allItems
       .map(item => {
-        const titleSimilarity = calculateSimilarity(
-          referenceItem.title.toLowerCase(),
-          item.title.toLowerCase()
+        const nameSimilarity = calculateSimilarity(
+          referenceItem.name.toLowerCase(),
+          item.name.toLowerCase()
         );
         
         const contentSimilarity = calculateSimilarity(
@@ -62,15 +61,14 @@ export async function GET(
           item.content.toLowerCase().substring(0, 500)
         );
 
-        const similarity = Math.max(titleSimilarity, contentSimilarity * 0.8);
+        const similarity = Math.max(nameSimilarity, contentSimilarity * 0.8);
         
         return {
           ...item,
           similarity,
           reasons: [
-            ...(titleSimilarity > threshold ? ['Similar title'] : []),
-            ...(contentSimilarity > threshold ? ['Similar content'] : []),
-            ...(item.tags?.some(tag => referenceItem.tags?.includes(tag)) ? ['Shared tags'] : [])
+            ...(nameSimilarity > threshold ? ['Similar name'] : []),
+            ...(contentSimilarity > threshold ? ['Similar content'] : [])
           ]
         };
       })
@@ -82,7 +80,7 @@ export async function GET(
       success: true,
       duplicates: duplicates.map(dup => ({
         id: dup.id,
-        title: dup.title,
+        name: dup.name,
         type: dup.type,
         similarity: Math.round(dup.similarity * 100) / 100,
         reasons: dup.reasons,
@@ -93,7 +91,7 @@ export async function GET(
       threshold,
       referenceItem: {
         id: referenceItem.id,
-        title: referenceItem.title,
+        name: referenceItem.name,
         type: referenceItem.type
       }
     });
@@ -144,9 +142,9 @@ export async function POST(
     });
 
     const potentialDuplicates = existingItems.filter(item => {
-      const titleSim = calculateSimilarity(title.toLowerCase(), item.title.toLowerCase());
+      const nameSim = calculateSimilarity(title.toLowerCase(), item.name.toLowerCase());
       const contentSim = calculateSimilarity(content.toLowerCase(), item.content.toLowerCase());
-      return titleSim > 0.9 || contentSim > 0.9;
+      return nameSim > 0.9 || contentSim > 0.9;
     });
 
     return NextResponse.json({
@@ -154,9 +152,9 @@ export async function POST(
       isDuplicate: potentialDuplicates.length > 0,
       duplicates: potentialDuplicates.map(dup => ({
         id: dup.id,
-        title: dup.title,
+        name: dup.name,
         similarity: Math.max(
-          calculateSimilarity(title.toLowerCase(), dup.title.toLowerCase()),
+          calculateSimilarity(title.toLowerCase(), dup.name.toLowerCase()),
           calculateSimilarity(content.toLowerCase(), dup.content.toLowerCase())
         ),
         action: 'review_required'

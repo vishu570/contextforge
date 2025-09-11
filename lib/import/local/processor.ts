@@ -67,7 +67,7 @@ export class LocalImportProcessor {
           files,
           userId,
           collectionId,
-            autoCategorize
+          autoCategorize
         )
       }
 
@@ -183,18 +183,24 @@ export class LocalImportProcessor {
       if (
         filters.excludePaths.some((exclude) => {
           // Normalize paths and split into segments
-          const normalizedPath = path.posix.normalize(currentPath.replace(/\\/g, '/'))
-          const normalizedExclude = path.posix.normalize(exclude.replace(/\\/g, '/'))
-          const pathSegments = normalizedPath.split('/').filter(Boolean)
-          
+          const normalizedPath = path.posix.normalize(
+            currentPath.replace(/\\/g, "/")
+          )
+          const normalizedExclude = path.posix.normalize(
+            exclude.replace(/\\/g, "/")
+          )
+          const pathSegments = normalizedPath.split("/").filter(Boolean)
+
           // Check if exclude matches any path segment exactly
           if (pathSegments.includes(normalizedExclude)) {
             return true
           }
-          
+
           // Check if currentPath starts with exclude as a directory prefix
-          return normalizedPath === normalizedExclude || 
-                 normalizedPath.startsWith(normalizedExclude + '/')
+          return (
+            normalizedPath === normalizedExclude ||
+            normalizedPath.startsWith(normalizedExclude + "/")
+          )
         })
       ) {
         return
@@ -207,9 +213,9 @@ export class LocalImportProcessor {
           const entryPath = path.join(currentPath, entry)
           await this.scanPath(entryPath, basePath, files, filters)
         }
-    if (filePaths.length === 1) {
-      return path.dirname(filePaths[0])
-    }
+        if (filePaths.length === 1) {
+          return path.dirname(filePaths[0])
+        }
         if (!hasValidExtension) return
 
         try {
@@ -322,7 +328,7 @@ export class LocalImportProcessor {
     const itemType = this.determineItemType(file.path, parsedContent)
 
     // Create item
-    if (autoCategorize) {
+    await prisma.item.create({
       data: {
         userId,
         type: itemType,
@@ -368,18 +374,80 @@ export class LocalImportProcessor {
     userId: string
   ): Promise<void> {
     try {
-      // Simple rule-based categorization
-      const categories = this.extractCategories(content)
+      // Import and initialize AI client for intelligent categorization
+      const { aiClient } = await import("../../ai/client")
+      await aiClient.initializeFromUser(userId)
 
-      for (const categoryName of categories) {
+      // Use AI for intelligent categorization with fallback to rule-based
+      let suggestedCategories: string[] = []
+      let confidence = 0.8
+      let source = "ai_suggested"
+      let aiProvider: string | undefined
+
+      try {
+        if (aiClient.getAvailableProviders().length > 0) {
+          // Get existing categories to provide context
+          const existingCategories = await prisma.category.findMany({
+            where: { userId },
+            select: { name: true },
+          })
+
+          suggestedCategories = await aiClient.categorize(content, {
+            maxSuggestions: 5,
+            existingCategories: existingCategories.map((c) => c.name),
+          })
+
+          aiProvider = aiClient.getAvailableProviders()[0]
+          confidence = 0.85 // Higher confidence for AI suggestions
+        } else {
+          throw new Error("No AI providers available")
+        }
+      } catch (aiError) {
+        console.warn(
+          "AI categorization failed, falling back to rule-based:",
+          aiError.message
+        )
+        // Fallback to rule-based categorization
+        suggestedCategories = this.extractCategories(content)
+        confidence = 0.6
+        source = "imported"
+        aiProvider = undefined
+      }
+
+      // Create or find categories and link to item
+      for (const categoryName of suggestedCategories) {
+        if (!categoryName || categoryName.trim().length === 0) continue
+
+        // Find or create the category
+        let category = await prisma.category.findFirst({
+          where: { name: categoryName, userId },
+        })
+
+        if (!category) {
+          category = await prisma.category.create({
+            data: {
+              name: categoryName,
+              userId,
+              description: `Auto-generated category from import`,
+              metadata: JSON.stringify({ source: "auto_import" }),
+            },
+          })
+        }
+
+        // Create the item-category relationship
         await prisma.itemCategory.create({
           data: {
             userId,
             itemId,
-            categoryName,
-            confidence: 0.8, // Rule-based confidence
-            source: "imported",
-            isApproved: false,
+            categoryId: category.id,
+            confidence,
+            source,
+            aiProvider,
+            reasoning:
+              source === "ai_suggested"
+                ? `AI-suggested category based on content analysis`
+                : undefined,
+            isApproved: false, // Requires user review
           },
         })
       }

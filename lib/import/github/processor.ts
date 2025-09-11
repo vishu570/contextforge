@@ -1,6 +1,6 @@
-import { Octokit } from '@octokit/rest'
-import { prisma } from '../../db'
-import { parseContent } from '../../parsers'
+import { Octokit } from "@octokit/rest"
+import { prisma } from "../../db"
+import { parseContent } from "../../parsers"
 
 export interface GitHubImportOptions {
   url: string
@@ -31,37 +31,43 @@ export class GitHubImportProcessor {
     this.octokit = new Octokit({
       auth: token,
       request: {
-        timeout: 30000
-      }
+        timeout: 30000,
+      },
     })
   }
 
   async processImport(options: GitHubImportOptions): Promise<void> {
-    const { userId, url, filters = {}, autoCategorie = true, collectionId } = options
+    const {
+      userId,
+      url,
+      filters = {},
+      autoCategorie = true,
+      collectionId,
+    } = options
 
     try {
       // Parse GitHub URL
       const repoInfo = this.parseGitHubUrl(url)
       if (!repoInfo) {
-        throw new Error('Invalid GitHub URL')
+        throw new Error("Invalid GitHub URL")
       }
 
       // Get import record
       const importRecord = await this.getImportRecord(userId, url)
       if (!importRecord) {
-        throw new Error('Import record not found')
+        throw new Error("Import record not found")
       }
 
       // Update import status to processing
-      await this.updateImportStatus(importRecord.id, 'processing')
+      await this.updateImportStatus(importRecord.id, "processing")
 
       // Get repository contents
       const files = await this.getRepositoryFiles(repoInfo, filters)
-      
+
       // Update total file count
       await prisma.import.update({
         where: { id: importRecord.id },
-        data: { totalFiles: files.length }
+        data: { totalFiles: files.length },
       })
 
       let processedCount = 0
@@ -71,31 +77,33 @@ export class GitHubImportProcessor {
       const batchSize = 5
       for (let i = 0; i < files.length; i += batchSize) {
         const batch = files.slice(i, i + batchSize)
-        
-        await Promise.all(batch.map(async (file) => {
-          try {
-            await this.processFile(file, {
-              userId,
-              importId: importRecord.id,
-              sourceId: importRecord.sourceId,
-              collectionId,
-              autoCategorie,
-              repoUrl: url
-            })
-            processedCount++
-          } catch (error) {
-            console.error(`Failed to process file ${file.path}:`, error)
-            failedCount++
-          }
-        }))
+
+        await Promise.all(
+          batch.map(async (file) => {
+            try {
+              await this.processFile(file, {
+                userId,
+                importId: importRecord.id,
+                sourceId: importRecord.sourceId,
+                collectionId,
+                autoCategorie,
+                repoUrl: url,
+              })
+              processedCount++
+            } catch (error) {
+              console.error(`Failed to process file ${file.path}:`, error)
+              failedCount++
+            }
+          })
+        )
 
         // Update progress
         await prisma.import.update({
           where: { id: importRecord.id },
           data: {
             processedFiles: processedCount,
-            failedFiles: failedCount
-          }
+            failedFiles: failedCount,
+          },
         })
 
         // Rate limiting delay
@@ -105,46 +113,47 @@ export class GitHubImportProcessor {
       }
 
       // Complete import
-      await this.updateImportStatus(importRecord.id, 'completed', new Date())
-
+      await this.updateImportStatus(importRecord.id, "completed", new Date())
     } catch (error) {
-      console.error('GitHub import failed:', error)
-      
+      console.error("GitHub import failed:", error)
+
       const importRecord = await this.getImportRecord(userId, url)
       if (importRecord) {
         await prisma.import.update({
           where: { id: importRecord.id },
           data: {
-            status: 'failed',
-            errorLog: error.message,
-            completedAt: new Date()
-          }
+            status: "failed",
+            errorLog: error instanceof Error ? error.message : "Unknown error",
+            completedAt: new Date(),
+          },
         })
       }
       throw error
     }
   }
 
-  private parseGitHubUrl(url: string): { owner: string; repo: string; path?: string; branch?: string } | null {
+  private parseGitHubUrl(
+    url: string
+  ): { owner: string; repo: string; path?: string; branch?: string } | null {
     try {
       const parsedUrl = new URL(url)
-      const pathParts = parsedUrl.pathname.split('/').filter(Boolean)
-      
+      const pathParts = parsedUrl.pathname.split("/").filter(Boolean)
+
       if (pathParts.length < 2) return null
-      
+
       const owner = pathParts[0]
       const repo = pathParts[1]
-      
+
       // Handle tree/branch URLs
-      let branch = 'main'
-      let path = ''
-      
-      if (pathParts.length > 3 && pathParts[2] === 'tree') {
+      let branch = "main"
+      let path = ""
+
+      if (pathParts.length > 3 && pathParts[2] === "tree") {
         branch = pathParts[3]
-        path = pathParts.slice(4).join('/')
-      } else if (pathParts.length > 3 && pathParts[2] === 'blob') {
+        path = pathParts.slice(4).join("/")
+      } else if (pathParts.length > 3 && pathParts[2] === "blob") {
         branch = pathParts[3]
-        path = pathParts.slice(4).join('/')
+        path = pathParts.slice(4).join("/")
       }
 
       return { owner, repo, branch, path }
@@ -155,10 +164,13 @@ export class GitHubImportProcessor {
 
   private async getRepositoryFiles(
     repoInfo: { owner: string; repo: string; path?: string; branch?: string },
-    filters: GitHubImportOptions['filters'] = {}
+    filters: GitHubImportOptions["filters"] = {}
   ): Promise<GitHubFile[]> {
-    const { owner, repo, branch = 'main', path = '' } = repoInfo
-    const { fileExtensions = ['.md', '.txt', '.json', '.yml', '.yaml'], excludePaths = ['node_modules', '.git'] } = filters
+    const { owner, repo, branch = "main", path = "" } = repoInfo
+    const {
+      fileExtensions = [".md", ".txt", ".json", ".yml", ".yaml"],
+      excludePaths = ["node_modules", ".git"],
+    } = filters
 
     const allFiles: GitHubFile[] = []
 
@@ -168,31 +180,37 @@ export class GitHubImportProcessor {
         owner,
         repo,
         tree_sha: branch,
-        recursive: 'true'
+        recursive: "true",
       })
 
       for (const item of response.data.tree) {
-        if (item.type !== 'blob') continue
+        if (item.type !== "blob") continue
         if (!item.path) continue
 
         // Apply path filters
         if (path && !item.path.startsWith(path)) continue
-        
+
         // Apply exclude filters
-        if (excludePaths.some(exclude => item.path!.includes(exclude))) continue
+        if (excludePaths.some((exclude) => item.path!.includes(exclude)))
+          continue
 
         // Apply file extension filters
-        const hasValidExtension = fileExtensions.some(ext => item.path!.endsWith(ext))
+        const hasValidExtension = fileExtensions.some((ext) =>
+          item.path!.endsWith(ext)
+        )
         if (!hasValidExtension) continue
 
         // Get file content
         const fileResponse = await this.octokit.rest.git.getBlob({
           owner,
           repo,
-          file_sha: item.sha!
+          file_sha: item.sha!,
         })
 
-        const content = Buffer.from(fileResponse.data.content, 'base64').toString('utf-8')
+        const content = Buffer.from(
+          fileResponse.data.content,
+          "base64"
+        ).toString("utf-8")
 
         allFiles.push({
           path: item.path,
@@ -200,7 +218,7 @@ export class GitHubImportProcessor {
           sha: item.sha!,
           type: this.getFileType(item.path),
           size: item.size || 0,
-          url: `https://github.com/${owner}/${repo}/blob/${branch}/${item.path}`
+          url: `https://github.com/${owner}/${repo}/blob/${branch}/${item.path}`,
         })
 
         // Rate limiting
@@ -209,7 +227,11 @@ export class GitHubImportProcessor {
 
       return allFiles
     } catch (error) {
-      throw new Error(`Failed to fetch repository files: ${error.message}`)
+      throw new Error(
+        `Failed to fetch repository files: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      )
     }
   }
 
@@ -224,7 +246,8 @@ export class GitHubImportProcessor {
       repoUrl: string
     }
   ): Promise<void> {
-    const { userId, importId, sourceId, collectionId, autoCategorie, repoUrl } = context
+    const { userId, importId, sourceId, collectionId, autoCategorie, repoUrl } =
+      context
 
     // Parse content using existing parsers
     const parsedContent = await parseContent(file.content, file.path)
@@ -241,20 +264,20 @@ export class GitHubImportProcessor {
         content: parsedContent.content || file.content,
         format: this.getFileExtension(file.path),
         sourceId,
-        sourceType: 'github',
+        sourceType: "github",
         sourceMetadata: JSON.stringify({
           path: file.path,
           url: file.url,
           sha: file.sha,
           size: file.size,
-          repoUrl
+          repoUrl,
         }),
         metadata: JSON.stringify({
           importId,
           processed: new Date().toISOString(),
-          ...parsedContent.metadata
-        })
-      }
+          ...parsedContent.metadata,
+        }),
+      },
     })
 
     // Add to collection if specified
@@ -263,8 +286,8 @@ export class GitHubImportProcessor {
         data: {
           itemId: item.id,
           collectionId,
-          position: 0 // Will be updated with proper ordering later
-        }
+          position: 0, // Will be updated with proper ordering later
+        },
       })
     }
 
@@ -274,46 +297,111 @@ export class GitHubImportProcessor {
     }
   }
 
-  private async autoCategozeItem(itemId: string, content: string, userId: string): Promise<void> {
+  private async autoCategozeItem(
+    itemId: string,
+    content: string,
+    userId: string
+  ): Promise<void> {
     try {
-      // Simple rule-based categorization for now
-      // In a full implementation, this would use the AI client
-      const categories = this.extractCategories(content)
-      
-      for (const categoryName of categories) {
+      // Import and initialize AI client for intelligent categorization
+      const { aiClient } = await import("../../ai/client")
+      await aiClient.initializeFromUser(userId)
+
+      // Use AI for intelligent categorization with fallback to rule-based
+      let suggestedCategories: string[] = []
+      let confidence = 0.8
+      let source = "ai_suggested"
+      let aiProvider: string | undefined
+
+      try {
+        if (aiClient.getAvailableProviders().length > 0) {
+          // Get existing categories to provide context
+          const existingCategories = await prisma.category.findMany({
+            where: { userId },
+            select: { name: true },
+          })
+
+          suggestedCategories = await aiClient.categorize(content, {
+            maxSuggestions: 5,
+            existingCategories: existingCategories.map((c) => c.name),
+          })
+
+          aiProvider = aiClient.getAvailableProviders()[0]
+          confidence = 0.85 // Higher confidence for AI suggestions
+        } else {
+          throw new Error("No AI providers available")
+        }
+      } catch (aiError) {
+        console.warn(
+          "AI categorization failed, falling back to rule-based:",
+          aiError.message
+        )
+        // Fallback to rule-based categorization
+        suggestedCategories = this.extractCategories(content)
+        confidence = 0.6
+        source = "imported"
+        aiProvider = undefined
+      }
+
+      // Create or find categories and link to item
+      for (const categoryName of suggestedCategories) {
+        if (!categoryName || categoryName.trim().length === 0) continue
+
+        // Find or create the category
+        let category = await prisma.category.findFirst({
+          where: { name: categoryName, userId },
+        })
+
+        if (!category) {
+          category = await prisma.category.create({
+            data: {
+              name: categoryName,
+              userId,
+              description: `Auto-generated category from import`,
+              metadata: JSON.stringify({ source: "auto_import" }),
+            },
+          })
+        }
+
+        // Create the item-category relationship
         await prisma.itemCategory.create({
           data: {
             userId,
             itemId,
-            categoryName,
-            confidence: 0.8, // Rule-based confidence
-            source: 'imported',
-            isApproved: false
-          }
+            categoryId: category.id,
+            confidence,
+            source,
+            aiProvider,
+            reasoning:
+              source === "ai_suggested"
+                ? `AI-suggested category based on content analysis`
+                : undefined,
+            isApproved: false, // Requires user review
+          },
         })
       }
     } catch (error) {
-      console.error('Auto-categorization failed:', error)
+      console.error("Auto-categorization failed:", error)
     }
   }
 
   private extractCategories(content: string): string[] {
     const categories: string[] = []
-    
+
     // Simple keyword-based categorization
     const keywords = {
-      'documentation': ['readme', 'doc', 'guide', 'tutorial', 'how to'],
-      'configuration': ['config', 'settings', '.env', 'docker', 'yaml', 'json'],
-      'code': ['function', 'class', 'import', 'export', 'const', 'let', 'var'],
-      'test': ['test', 'spec', 'jest', 'mocha', 'cypress'],
-      'api': ['endpoint', 'route', 'api', 'rest', 'graphql'],
-      'database': ['schema', 'migration', 'query', 'sql', 'database']
+      documentation: ["readme", "doc", "guide", "tutorial", "how to"],
+      configuration: ["config", "settings", ".env", "docker", "yaml", "json"],
+      code: ["function", "class", "import", "export", "const", "let", "var"],
+      test: ["test", "spec", "jest", "mocha", "cypress"],
+      api: ["endpoint", "route", "api", "rest", "graphql"],
+      database: ["schema", "migration", "query", "sql", "database"],
     }
 
     const lowerContent = content.toLowerCase()
-    
+
     for (const [category, terms] of Object.entries(keywords)) {
-      if (terms.some(term => lowerContent.includes(term))) {
+      if (terms.some((term) => lowerContent.includes(term))) {
         categories.push(category)
       }
     }
@@ -323,37 +411,40 @@ export class GitHubImportProcessor {
 
   private getFileType(filePath: string): string {
     const extension = this.getFileExtension(filePath)
-    
+
     const typeMap: Record<string, string> = {
-      '.md': 'prompt',
-      '.txt': 'snippet',
-      '.json': 'template',
-      '.yml': 'template',
-      '.yaml': 'template',
-      '.js': 'snippet',
-      '.ts': 'snippet',
-      '.py': 'snippet',
-      '.sh': 'snippet'
+      ".md": "prompt",
+      ".txt": "snippet",
+      ".json": "template",
+      ".yml": "template",
+      ".yaml": "template",
+      ".js": "snippet",
+      ".ts": "snippet",
+      ".py": "snippet",
+      ".sh": "snippet",
     }
 
-    return typeMap[extension] || 'other'
+    return typeMap[extension] || "other"
   }
 
   private determineItemType(filePath: string, parsedContent: any): string {
     // Check for specific patterns in content to determine type
-    const content = parsedContent.content || ''
+    const content = parsedContent.content || ""
     const lowerContent = content.toLowerCase()
 
-    if (lowerContent.includes('prompt') || lowerContent.includes('instruction')) {
-      return 'prompt'
-    }
-    
-    if (lowerContent.includes('agent') || lowerContent.includes('bot')) {
-      return 'agent'
+    if (
+      lowerContent.includes("prompt") ||
+      lowerContent.includes("instruction")
+    ) {
+      return "prompt"
     }
 
-    if (filePath.includes('config') || filePath.includes('setting')) {
-      return 'rule'
+    if (lowerContent.includes("agent") || lowerContent.includes("bot")) {
+      return "agent"
+    }
+
+    if (filePath.includes("config") || filePath.includes("setting")) {
+      return "rule"
     }
 
     // Default based on file extension
@@ -361,14 +452,14 @@ export class GitHubImportProcessor {
   }
 
   private extractFileName(filePath: string): string {
-    const parts = filePath.split('/')
+    const parts = filePath.split("/")
     const fileName = parts[parts.length - 1]
-    return fileName.split('.')[0] // Remove extension
+    return fileName.split(".")[0] // Remove extension
   }
 
   private getFileExtension(filePath: string): string {
-    const parts = filePath.split('.')
-    return parts.length > 1 ? `.${parts[parts.length - 1]}` : ''
+    const parts = filePath.split(".")
+    return parts.length > 1 ? `.${parts[parts.length - 1]}` : ""
   }
 
   private async getImportRecord(userId: string, url: string) {
@@ -376,24 +467,28 @@ export class GitHubImportProcessor {
       where: {
         userId,
         sourceUrl: url,
-        status: { in: ['pending', 'processing'] }
+        status: { in: ["pending", "processing"] },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     })
   }
 
-  private async updateImportStatus(importId: string, status: string, completedAt?: Date): Promise<void> {
+  private async updateImportStatus(
+    importId: string,
+    status: string,
+    completedAt?: Date
+  ): Promise<void> {
     await prisma.import.update({
       where: { id: importId },
       data: {
         status,
-        ...(completedAt && { completedAt })
-      }
+        ...(completedAt && { completedAt }),
+      },
     })
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 }
 

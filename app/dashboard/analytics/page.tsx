@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
-import { getServerSession } from 'next-auth';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { authOptions } from '@/lib/auth';
+import { getUserFromToken } from '@/lib/auth';
 import { AnalyticsDashboard } from '@/components/analytics-dashboard';
 import { RealtimeMetrics } from '@/components/realtime-metrics';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,13 +32,19 @@ async function getInitialAnalytics(userId: string) {
 }
 
 export default async function AnalyticsPage() {
-  const session = await getServerSession(authOptions);
-  
-  if (!session?.user?.id) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth-token')?.value;
+
+  if (!token) {
     redirect('/login');
   }
 
-  const initialData = await getInitialAnalytics(session.user.id);
+  const user = await getUserFromToken(token);
+  if (!user) {
+    redirect('/login');
+  }
+
+  const initialData = await getInitialAnalytics(user.id);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -96,7 +102,7 @@ export default async function AnalyticsPage() {
             </div>
           }>
             <AnalyticsDashboard 
-              userId={session.user.id}
+              userId={user.id}
               initialData={initialData}
               realtime={false}
             />
@@ -110,7 +116,7 @@ export default async function AnalyticsPage() {
             </div>
           }>
             <RealtimeMetrics 
-              userId={session.user.id}
+              userId={user.id}
               autoUpdate={true}
               updateInterval={5}
             />

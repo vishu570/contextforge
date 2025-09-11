@@ -77,7 +77,7 @@ export function AdvancedSearch() {
   const [currentPage, setCurrentPage] = useState(1);
   
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout>();
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Debounced search function
   const performSearch = async (searchFilters = filters, page = 1) => {
@@ -135,24 +135,36 @@ export function AdvancedSearch() {
 
   // Debounced search trigger
   useEffect(() => {
-    clearTimeout(debounceRef.current);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
     debounceRef.current = setTimeout(() => {
       if (filters.query || filters.tags.length > 0 || filters.categories.length > 0) {
         performSearch();
       }
     }, 300);
 
-    return () => clearTimeout(debounceRef.current);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [filters]);
 
   // Get suggestions on query change
   useEffect(() => {
-    clearTimeout(debounceRef.current);
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
     debounceRef.current = setTimeout(() => {
       getSuggestions(filters.query);
     }, 200);
 
-    return () => clearTimeout(debounceRef.current);
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
   }, [filters.query]);
 
   const updateFilters = (updates: Partial<SearchFilters>) => {

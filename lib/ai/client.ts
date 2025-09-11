@@ -13,7 +13,7 @@ export class AIClient {
   async initializeFromUser(userId: string): Promise<void> {
     const apiKeys = await prisma.apiKey.findMany({
       where: { userId },
-      select: { provider, encryptedKey: true }
+      select: { provider: true, encryptedKey: true }
     })
 
     for (const apiKey of apiKeys) {
@@ -30,7 +30,7 @@ export class AIClient {
           this.providers.set(apiKey.provider, provider)
         }
       } catch (error) {
-        console.warn(`Failed to initialize ${apiKey.provider} provider:`, error.message)
+        console.warn(`Failed to initialize ${apiKey.provider} provider:`, error instanceof Error ? error.message : 'Unknown error')
       }
     }
   }
@@ -146,7 +146,7 @@ export class AIClient {
         }
       })
     } catch (error) {
-      console.warn('Failed to store optimization result:', error.message)
+      console.warn('Failed to store optimization result:', error instanceof Error ? error.message : 'Unknown error')
     }
   }
 }

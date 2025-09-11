@@ -1,7 +1,7 @@
 export interface ModelConfig {
   id: string;
   name: string;
-  provider: 'openai' | 'anthropic' | 'google';
+  provider: 'openai' | 'anthropic' | 'google' | 'custom';
   cost: number;
   maxTokens: number;
   isDefault?: boolean;

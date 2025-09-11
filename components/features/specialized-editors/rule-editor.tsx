@@ -194,8 +194,10 @@ export function RuleEditor({ item, existingRules, onSave, onTest, readonly = fal
       existingRules.forEach(existingRule => {
         if (Math.abs(existingRule.priority - watchedPriority) < 5) {
           detectedConflicts.push({
+            id: `conflict-${existingRule.id}-priority`,
+            ruleId1: existingRule.id,
+            ruleId2: 'current',
             type: 'priority',
-            rules: [existingRule.id, 'current'],
             description: `Similar priority to "${existingRule.name}" (${existingRule.priority})`,
             severity: 'medium'
           });
@@ -214,8 +216,10 @@ export function RuleEditor({ item, existingRules, onSave, onTest, readonly = fal
       
       if (hasCircularActions) {
         detectedConflicts.push({
+          id: 'conflict-current-circular',
+          ruleId1: 'current',
+          ruleId2: 'current',
           type: 'circular',
-          rules: ['current'],
           description: 'Potential circular trigger dependency detected',
           severity: 'high'
         });
@@ -308,7 +312,7 @@ export function RuleEditor({ item, existingRules, onSave, onTest, readonly = fal
       setTestResults(result);
     } catch (error) {
       console.error('Rule testing failed:', error);
-      setTestResults({ error: error.message });
+      setTestResults({ error: error instanceof Error ? error.message : 'An unknown error occurred' });
     } finally {
       setIsTestingRule(false);
     }

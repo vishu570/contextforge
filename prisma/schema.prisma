@@ -127,6 +127,7 @@ model Source {
   branch          String?
   pathGlob        String?
   lastImportedAt  DateTime?
+  metadata        String   @default("{}")  // JSON metadata for tracking
   items           Item[]
   imports         Import[]
   createdAt       DateTime @default(now())

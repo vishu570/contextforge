@@ -595,7 +595,7 @@ export function EditItemForm({ item, availableTags, type, userId }: EditItemForm
                         wordWrap: 'on',
                         lineNumbers: 'on',
                         folding: true,
-                        bracketMatching: 'always',
+                        matchBrackets: 'always',
                         automaticLayout: true,
                         theme: 'vs-dark',
                         fontSize: 14,

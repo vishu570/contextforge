@@ -411,7 +411,7 @@ export function AnalyticsDashboard({
           <div className="flex items-center space-x-2">
             <Switch 
               checked={autoRefresh} 
-              onCheckedChange={setAutoRefresh}
+              onCheckedChange={(checked) => setAutoRefresh(checked === true)}
               id="auto-refresh"
             />
             <Label htmlFor="auto-refresh" className="text-sm">Auto-refresh</Label>
@@ -556,16 +556,16 @@ export function AnalyticsDashboard({
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={chartData.featureAdoption}
+                      data={chartData.featureAdoption || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {chartData.featureAdoption.map((entry, index) => (
+                      {(chartData.featureAdoption || []).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>

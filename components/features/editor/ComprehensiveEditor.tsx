@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -14,46 +13,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Save, 
-  Download, 
-  Upload, 
-  GitBranch, 
-  Globe, 
-  History, 
-  Sparkles,
-  Copy,
-  Check,
-  AlertCircle,
-  FileText,
-  Bot,
-  Code,
-  Webhook,
-  ChevronRight,
-  Settings,
-  Wand2,
-  Target,
-  Clock,
-  User,
-  Tag,
-  Languages,
-  RefreshCw,
-  GitCommit,
-  FileJson,
-  FileCode,
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { EditorTab } from '@/editor';
+import { useToast } from '@/hooks/use-toast';
+import {
   Archive,
+  Bot,
+  Check,
+  Code,
+  Copy,
   Eye,
-  EyeOff,
+  FileCode,
+  FileJson,
+  FileText,
+  GitBranch,
+  History,
+  Save,
+  Sparkles,
+  Upload,
+  Wand2,
+  Webhook,
   Zap
 } from 'lucide-react';
+import { useState } from 'react';
 import { MonacoEditor } from './MonacoEditor';
-import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-import type { EditorTab } from '@/types/editor';
 
 interface ComprehensiveEditorProps {
   tab: EditorTab;
@@ -336,7 +320,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
                           <TabsTrigger value="claude">Claude</TabsTrigger>
                           <TabsTrigger value="gemini">Gemini</TabsTrigger>
                         </TabsList>
-                        
+
                         {llmVariants.map((variant) => (
                           <TabsContent key={variant.model} value={variant.model} className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -347,7 +331,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
                                 Apply Changes
                               </Button>
                             </div>
-                            
+
                             <div className="space-y-2">
                               <Label className="text-gray-400">Optimizations Applied:</Label>
                               <div className="flex flex-wrap gap-2">

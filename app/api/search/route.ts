@@ -42,8 +42,8 @@ export async function POST(request: NextRequest) {
     if (validatedData.query) {
       whereClause.AND.push({
         OR: [
-          { title: { contains: validatedData.query, mode: 'insensitive' } },
-          { content: { contains: validatedData.query, mode: 'insensitive' } }
+          { name: { contains: validatedData.query } },
+          { content: { contains: validatedData.query } }
         ]
       });
     }
@@ -52,7 +52,13 @@ export async function POST(request: NextRequest) {
     if (validatedData.tags.length > 0) {
       whereClause.AND.push({
         tags: {
-          hasSome: validatedData.tags
+          some: {
+            tag: {
+              name: {
+                in: validatedData.tags
+              }
+            }
+          }
         }
       });
     }
@@ -93,10 +99,18 @@ export async function POST(request: NextRequest) {
         take: validatedData.limit,
         select: {
           id: true,
-          title: true,
+          name: true,
           content: validatedData.includeMetadata,
           type: true,
-          tags: true,
+          tags: {
+            select: {
+              tag: {
+                select: {
+                  name: true
+                }
+              }
+            }
+          },
           metadata: validatedData.includeMetadata,
           createdAt: true,
           updatedAt: true,
@@ -127,9 +141,9 @@ export async function POST(request: NextRequest) {
     // Prepare response items
     const responseItems = rankedItems.map(item => ({
       id: item.id,
-      title: item.title,
+      name: item.name,
       type: item.type,
-      tags: item.tags,
+      tags: item.tags?.map((itemTag: any) => itemTag.tag.name) || [],
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
       preview: validatedData.includeMetadata 
@@ -161,7 +175,7 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid search parameters', details: error.errors },
+        { error: 'Invalid search parameters', details: error.issues },
         { status: 400 }
       );
     }
@@ -198,14 +212,13 @@ export async function GET(request: NextRequest) {
     const titleSuggestions = await prisma.item.findMany({
       where: {
         userId: user.id,
-        title: {
-          contains: query,
-          mode: 'insensitive'
+        name: {
+          contains: query
         }
       },
       select: {
         id: true,
-        title: true,
+        name: true,
         type: true
       },
       take: limit,
@@ -213,27 +226,34 @@ export async function GET(request: NextRequest) {
     });
 
     // Get tag suggestions
-    const allItems = await prisma.item.findMany({
-      where: { userId: user.id },
-      select: { tags: true }
+    const tagSuggestions = await prisma.tag.findMany({
+      where: {
+        name: {
+          contains: query
+        },
+        items: {
+          some: {
+            item: {
+              userId: user.id
+            }
+          }
+        }
+      },
+      take: limit,
+      orderBy: { name: 'asc' }
     });
-
-    const allTags = allItems.flatMap(item => item.tags || []);
-    const tagSuggestions = [...new Set(allTags)]
-      .filter(tag => tag.toLowerCase().includes(query.toLowerCase()))
-      .slice(0, limit);
 
     return NextResponse.json({
       success: true,
       suggestions: titleSuggestions.map(item => ({
         type: 'item',
         id: item.id,
-        title: item.title,
+        name: item.name,
         itemType: item.type
       })),
       tagSuggestions: tagSuggestions.map(tag => ({
         type: 'tag',
-        value: tag
+        value: tag.name
       })),
       popularTags: await getPopularTags(user.id)
     });
@@ -258,21 +278,41 @@ async function getFacets(userId: string, query?: string) {
   });
 
   // Get popular tags
-  const allItems = await prisma.item.findMany({
-    where: baseWhere,
-    select: { tags: true, metadata: true }
+  const tagCounts = await prisma.itemTag.groupBy({
+    by: ['tagId'],
+    where: {
+      item: {
+        userId
+      }
+    },
+    _count: true,
+    orderBy: {
+      _count: {
+        tagId: 'desc'
+      }
+    },
+    take: 20
   });
 
-  const tagCounts: Record<string, number> = {};
+  const tagNames = await prisma.tag.findMany({
+    where: {
+      id: {
+        in: tagCounts.map(tc => tc.tagId)
+      }
+    },
+    select: { id: true, name: true }
+  });
+
+  const tagNameMap = new Map(tagNames.map(tag => [tag.id, tag.name]));
+
+  // Get categories from metadata
+  const allItems = await prisma.item.findMany({
+    where: baseWhere,
+    select: { metadata: true }
+  });
+
   const categoryCounts: Record<string, number> = {};
-
   allItems.forEach(item => {
-    // Count tags
-    item.tags?.forEach(tag => {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    });
-
-    // Count categories from metadata
     const category = (item.metadata as any)?.category;
     if (category) {
       categoryCounts[category] = (categoryCounts[category] || 0) + 1;
@@ -285,10 +325,11 @@ async function getFacets(userId: string, query?: string) {
       count: t._count,
       label: t.type.charAt(0).toUpperCase() + t.type.slice(1)
     })),
-    tags: Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 20)
-      .map(([tag, count]) => ({ value: tag, count, label: tag })),
+    tags: tagCounts.map(tc => ({
+      value: tagNameMap.get(tc.tagId) || '',
+      count: tc._count,
+      label: tagNameMap.get(tc.tagId) || ''
+    })).filter(t => t.value),
     categories: Object.entries(categoryCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10)
@@ -297,22 +338,37 @@ async function getFacets(userId: string, query?: string) {
 }
 
 async function getPopularTags(userId: string, limit = 10) {
-  const items = await prisma.item.findMany({
-    where: { userId },
-    select: { tags: true }
+  const tagCounts = await prisma.itemTag.groupBy({
+    by: ['tagId'],
+    where: {
+      item: {
+        userId
+      }
+    },
+    _count: true,
+    orderBy: {
+      _count: {
+        tagId: 'desc'
+      }
+    },
+    take: limit
   });
 
-  const tagCounts: Record<string, number> = {};
-  items.forEach(item => {
-    item.tags?.forEach(tag => {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    });
+  const tagNames = await prisma.tag.findMany({
+    where: {
+      id: {
+        in: tagCounts.map(tc => tc.tagId)
+      }
+    },
+    select: { id: true, name: true }
   });
 
-  return Object.entries(tagCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([tag, count]) => ({ tag, count }));
+  const tagNameMap = new Map(tagNames.map(tag => [tag.id, tag.name]));
+
+  return tagCounts.map(tc => ({
+    tag: tagNameMap.get(tc.tagId) || '',
+    count: tc._count
+  })).filter(t => t.tag);
 }
 
 function calculateRelevanceScores(items: any[], query: string): any[] {
@@ -320,7 +376,7 @@ function calculateRelevanceScores(items: any[], query: string): any[] {
   
   return items.map(item => {
     let score = 0;
-    const title = item.title.toLowerCase();
+    const title = item.name.toLowerCase();
     const content = (item.content || '').toLowerCase();
     
     // Title matches get higher weight
@@ -346,7 +402,7 @@ async function performSemanticRanking(items: any[], query: string): Promise<any[
   // Placeholder for semantic search - would integrate with embeddings/vector DB
   // For now, return items with enhanced text similarity
   return items.map(item => {
-    const similarity = calculateSemanticSimilarity(query, item.title + ' ' + (item.content || ''));
+    const similarity = calculateSemanticSimilarity(query, item.name + ' ' + (item.content || ''));
     return { ...item, semanticScore: similarity };
   }).sort((a, b) => b.semanticScore - a.semanticScore);
 }

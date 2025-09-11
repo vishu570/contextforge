@@ -28,6 +28,10 @@ export const classifyCommand = new Command('classify')
           }
 
           const item = itemResult.data;
+          if (!item) {
+            spinner.fail('Item not found');
+            process.exit(1);
+          }
           spinner.succeed(`Found item: ${item.name}`);
 
           console.log(chalk.blue('Content preview:'));
@@ -97,7 +101,7 @@ export const classifyCommand = new Command('classify')
               actions.push('Move to suggested folder');
             }
             
-            if (classification.primaryCategory !== item.type) {
+            if (item && classification.primaryCategory !== item.type) {
               actions.push(`Change type to ${classification.primaryCategory}`);
             }
 
@@ -117,7 +121,7 @@ export const classifyCommand = new Command('classify')
 
                 const updates: any = {};
 
-                if (selectedActions.includes('Add suggested tags')) {
+                if (selectedActions.includes('Add suggested tags') && item) {
                   const existingTags = item.tags || [];
                   const newTags = [...new Set([...existingTags, ...classification.suggestedTags])];
                   updates.tags = newTags;
@@ -130,7 +134,7 @@ export const classifyCommand = new Command('classify')
                       name: classification.suggestedFolder,
                       description: `Auto-created for ${classification.primaryCategory} items`,
                     });
-                    if (!folderResult.error) {
+                    if (!folderResult.error && folderResult.data) {
                       updates.folderId = folderResult.data.id;
                     }
                   }
@@ -350,6 +354,10 @@ async function monitorClassificationJob(jobId: string) {
       }
 
       const job = result.data;
+      if (!job) {
+        spinner.fail('Job not found');
+        return;
+      }
       
       if (job.status === 'completed') {
         spinner.succeed('Batch classification completed');
