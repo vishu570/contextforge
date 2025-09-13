@@ -2,17 +2,20 @@
 
 import type { EditorActions, EditorLayoutProps, EditorState, EditorTab, FileTreeItem } from '@/editor';
 import { useToast } from '@/hooks/use-toast';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { ComprehensiveEditor } from './ComprehensiveEditor';
 import { EditorToolbar } from './EditorToolbar';
 import { FileTree } from './FileTree';
+import { ImportScreen } from './ImportScreen';
 import { ResponsiveMobile } from './ResponsiveMobile';
 import { TabsManager } from './TabsManager';
 import { WelcomeScreen } from './WelcomeScreen';
 
 export function EditorLayout({ initialData }: EditorLayoutProps) {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [isMobile, setIsMobile] = useState(false);
 
   // Editor state
@@ -23,6 +26,17 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
     sidebarExpanded: true,
     previewPanelExpanded: false,
   });
+
+  // Import mode state
+  const [showImport, setShowImport] = useState(false);
+
+  // Check for import mode from URL params
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'import') {
+      setShowImport(true);
+    }
+  }, [searchParams]);
 
   // Check for mobile device
   useEffect(() => {
@@ -317,6 +331,10 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
     togglePreviewPanel: useCallback(() => {
       setState(prev => ({ ...prev, previewPanelExpanded: !prev.previewPanelExpanded }));
     }, []),
+
+    toggleImport: useCallback(() => {
+      setShowImport(prev => !prev);
+    }, []),
   };
 
   // Keyboard shortcuts
@@ -363,6 +381,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
         activeTab={activeTab}
         onSave={() => activeTab && actions.saveTab(activeTab.id)}
         onToggleSidebar={actions.toggleSidebar}
+        onToggleImport={actions.toggleImport}
         sidebarExpanded={state.sidebarExpanded}
       />
 
@@ -405,7 +424,9 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
 
               {/* Editor content */}
               <div className="flex-1 min-h-0">
-                {activeTab ? (
+                {showImport ? (
+                  <ImportScreen />
+                ) : activeTab ? (
                   <ComprehensiveEditor
                     key={activeTab.id}
                     tab={activeTab}
@@ -417,6 +438,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
                     fileTree={state.fileTree}
                     onFileSelect={actions.openTab}
                     onCreateFile={actions.createFile}
+                    onShowImport={actions.toggleImport}
                   />
                 )}
               </div>

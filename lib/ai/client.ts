@@ -19,7 +19,11 @@ export class AIClient {
 
   async initializeFromUser(userId: string): Promise<void> {
     const apiKeys = await prisma.apiKey.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        // Only initialize AI providers, not source providers like GitHub
+        provider: { in: ['openai', 'anthropic', 'gemini'] }
+      },
       select: { provider: true, encryptedKey: true },
     })
 

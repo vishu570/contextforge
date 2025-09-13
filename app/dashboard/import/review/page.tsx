@@ -86,6 +86,9 @@ function ImportReviewContent() {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+  
+  // Custom paths state - persists user-entered paths across item switching
+  const [customPaths, setCustomPaths] = useState<Map<string, string>>(new Map());
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -96,6 +99,10 @@ function ImportReviewContent() {
     } else {
       setSelectedItemIds(new Set());
     }
+  };
+
+  const handleCustomPathChange = (itemId: string, path: string) => {
+    setCustomPaths(prev => new Map(prev.set(itemId, path)));
   };
 
   useEffect(() => {
@@ -640,6 +647,8 @@ function ImportReviewContent() {
                             onOptimize={() => generateOptimizations(item.id)}
                             onRunClassification={() => runClassification(item.id, item.content, item.name, item.type)}
                             isProcessing={isProcessing || isBulkProcessing}
+                            customPaths={customPaths}
+                            onCustomPathChange={handleCustomPathChange}
                           />
                           {selectedItemIds.has(item.id) && item.status === 'pending' && (
                             <div className="mt-2 p-2 bg-primary/5 border border-primary/20 rounded text-sm text-primary">

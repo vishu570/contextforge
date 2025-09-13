@@ -1,72 +1,40 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Lightbulb,
-  Zap,
-  Target,
-  TrendingUp,
-  Brain,
-  Wand2,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Copy,
-  Download,
-  RefreshCw,
-  Filter,
-  Search,
-  Settings,
-  Info,
-  AlertTriangle,
-  Star,
-  ArrowRight,
+import { toast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
   ArrowUp,
-  ArrowDown,
-  ThumbsUp,
-  ThumbsDown,
-  Clock,
-  DollarSign,
+  Brain,
+  CheckCircle,
+  Copy,
   Cpu,
+  DollarSign,
+  Eye,
+  Filter,
   Hash,
-  FileText,
-  MessageSquare,
   Layers,
-  Split,
-  Merge,
-  ChevronDown,
-  ChevronRight,
-  MoreVertical,
-  Play,
-  Pause,
-  BarChart3,
-  PieChart,
-  Activity,
-  Gauge,
-  Globe,
-  Users,
+  Lightbulb,
+  Rocket,
   Shield,
   Sparkles,
-  Rocket,
-  Flame,
-  Crosshair,
+  Star,
+  Target,
+  Wand2,
+  XCircle,
+  Zap
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 const optimizationConfigSchema = z.object({
   targetModel: z.string().min(1, 'Target model is required'),
@@ -174,10 +142,10 @@ const SUGGESTION_TYPES = [
 ];
 
 const AI_MODELS = [
-  { value: 'gpt-5-2025-08-07', label: 'GPT-5', provider: 'OpenAI' },
+  { value: 'gpt-5-mini-2025-08-07', label: 'GPT-5', provider: 'OpenAI' },
   { value: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
   { value: 'claude-sonnet-4-20250514', label: 'Claude 4 Sonnet', provider: 'Anthropic' },
-  { value: 'claude-haiku-4-20250514', label: 'Claude 4 Haiku', provider: 'Anthropic' },
+  { value: 'claude-3-5-haiku-latest', label: 'Claude 4 Haiku', provider: 'Anthropic' },
   { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'Google' },
 ];
 
@@ -205,7 +173,7 @@ export function PromptOptimization({
   const form = useForm<OptimizationConfigData>({
     resolver: zodResolver(optimizationConfigSchema),
     defaultValues: {
-      targetModel: 'gpt-5-2025-08-07',
+      targetModel: 'gpt-5-mini-2025-08-07',
       optimizationGoals: ['quality'],
       priorityLevel: 'medium',
       constraints: {
@@ -223,18 +191,18 @@ export function PromptOptimization({
     },
   });
 
-  const latestSession = optimizationSessions.length > 0 ? 
-    optimizationSessions.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())[0] : 
+  const latestSession = optimizationSessions.length > 0 ?
+    optimizationSessions.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())[0] :
     null;
 
-  const currentSession = selectedSession ? 
-    optimizationSessions.find(s => s.id === selectedSession) : 
+  const currentSession = selectedSession ?
+    optimizationSessions.find(s => s.id === selectedSession) :
     latestSession;
 
   // Filter suggestions
   const filteredSuggestions = useMemo(() => {
     if (!currentSession) return [];
-    
+
     return currentSession.suggestions.filter(suggestion => {
       const typeMatch = suggestionFilter === 'all' || suggestion.type === suggestionFilter;
       const difficultyMatch = difficultyFilter === 'all' || suggestion.difficulty === difficultyFilter;
@@ -259,7 +227,7 @@ export function PromptOptimization({
       const session = await onOptimizationStart(config);
       setSelectedSession(session.id);
       setShowConfigDialog(false);
-      
+
       toast({
         title: 'Optimization started',
         description: 'AI is analyzing your prompt for improvement opportunities.',
@@ -275,9 +243,9 @@ export function PromptOptimization({
 
   const applySuggestion = (suggestion: OptimizationSuggestion) => {
     if (!currentSession) return;
-    
+
     onSuggestionApply(currentSession.id, suggestion.id);
-    
+
     // Update prompt content with suggestion
     let newContent = promptContent;
     if (suggestion.originalText && suggestion.suggestedText) {
@@ -286,9 +254,9 @@ export function PromptOptimization({
       // For structural suggestions, append or modify accordingly
       newContent = suggestion.suggestedText;
     }
-    
+
     onContentUpdate(newContent);
-    
+
     toast({
       title: 'Suggestion applied',
       description: `Applied "${suggestion.title}" to your prompt.`,
@@ -297,9 +265,9 @@ export function PromptOptimization({
 
   const rejectSuggestion = (suggestion: OptimizationSuggestion) => {
     if (!currentSession) return;
-    
+
     onSuggestionReject(currentSession.id, suggestion.id);
-    
+
     toast({
       title: 'Suggestion rejected',
       description: `Rejected "${suggestion.title}".`,
@@ -308,15 +276,15 @@ export function PromptOptimization({
 
   const applyAllHighConfidence = () => {
     if (!currentSession) return;
-    
+
     const highConfidenceSuggestions = currentSession.suggestions.filter(
       s => s.confidence >= autoApplySettings.minConfidence && s.status === 'pending'
     );
-    
+
     highConfidenceSuggestions.forEach(suggestion => {
       applySuggestion(suggestion);
     });
-    
+
     toast({
       title: 'Bulk application completed',
       description: `Applied ${highConfidenceSuggestions.length} high-confidence suggestions.`,
@@ -390,7 +358,7 @@ export function PromptOptimization({
     const typeInfo = getSuggestionTypeInfo(suggestion.type);
     const isApplied = suggestion.status === 'applied';
     const isRejected = suggestion.status === 'rejected';
-    
+
     return (
       <Card key={suggestion.id} className={`${isApplied ? 'bg-green-50 border-green-200' : ''} ${isRejected ? 'opacity-50' : ''}`}>
         <CardHeader className="pb-3">
@@ -402,18 +370,17 @@ export function PromptOptimization({
                 <Badge className={typeInfo.color}>
                   {typeInfo.label}
                 </Badge>
-                <Badge variant="outline" className={`${
-                  suggestion.difficulty === 'easy' ? 'border-green-500 text-green-700' :
+                <Badge variant="outline" className={`${suggestion.difficulty === 'easy' ? 'border-green-500 text-green-700' :
                   suggestion.difficulty === 'medium' ? 'border-yellow-500 text-yellow-700' :
-                  'border-red-500 text-red-700'
-                }`}>
+                    'border-red-500 text-red-700'
+                  }`}>
                   {suggestion.difficulty}
                 </Badge>
               </div>
-              
+
               <CardDescription>{suggestion.description}</CardDescription>
             </div>
-            
+
             <div className="flex items-center space-x-1">
               <Badge variant="secondary">
                 {(suggestion.confidence * 100).toFixed(0)}% confidence
@@ -428,7 +395,7 @@ export function PromptOptimization({
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-4">
           {/* Impact metrics */}
           <div className="grid grid-cols-4 gap-3 text-sm">
@@ -457,13 +424,13 @@ export function PromptOptimization({
               <div className="text-xs text-muted-foreground">Safety</div>
             </div>
           </div>
-          
+
           {/* Reasoning */}
           <div className="bg-muted p-3 rounded-lg">
             <Label className="text-sm font-medium">AI Reasoning</Label>
             <p className="text-sm mt-1">{suggestion.reasoning}</p>
           </div>
-          
+
           {/* Estimated metrics improvement */}
           {suggestion.metrics && (
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -493,7 +460,7 @@ export function PromptOptimization({
               )}
             </div>
           )}
-          
+
           {/* Diff view */}
           {showDiff === suggestion.id && suggestion.originalText && (
             <div className="border rounded-lg p-3 bg-background">
@@ -513,7 +480,7 @@ export function PromptOptimization({
               </div>
             </div>
           )}
-          
+
           {/* Examples */}
           {suggestion.examples && suggestion.examples.length > 0 && (
             <div>
@@ -527,7 +494,7 @@ export function PromptOptimization({
               </div>
             </div>
           )}
-          
+
           {/* Actions */}
           {!readonly && suggestion.status === 'pending' && (
             <div className="flex items-center space-x-2 pt-2 border-t">
@@ -556,7 +523,7 @@ export function PromptOptimization({
               </Button>
             </div>
           )}
-          
+
           {isApplied && (
             <div className="flex items-center space-x-2 pt-2 border-t text-green-600">
               <CheckCircle className="h-4 w-4" />
@@ -568,7 +535,7 @@ export function PromptOptimization({
               )}
             </div>
           )}
-          
+
           {isRejected && (
             <div className="flex items-center space-x-2 pt-2 border-t text-red-600">
               <XCircle className="h-4 w-4" />
@@ -590,7 +557,7 @@ export function PromptOptimization({
             Get AI-powered suggestions to improve your prompt
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {currentSession && currentSession.status === 'analyzing' && (
             <div className="flex items-center space-x-2 text-blue-600">
@@ -598,7 +565,7 @@ export function PromptOptimization({
               <span className="text-sm">Analyzing...</span>
             </div>
           )}
-          
+
           {!readonly && (
             <Button onClick={() => setShowConfigDialog(true)}>
               <Lightbulb className="h-4 w-4 mr-2" />
@@ -621,14 +588,14 @@ export function PromptOptimization({
                 <span>Optimization Session</span>
                 <Badge className={
                   currentSession.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  currentSession.status === 'analyzing' ? 'bg-blue-100 text-blue-800' :
-                  currentSession.status === 'failed' ? 'bg-red-100 text-red-800' :
-                  'bg-gray-100 text-gray-800'
+                    currentSession.status === 'analyzing' ? 'bg-blue-100 text-blue-800' :
+                      currentSession.status === 'failed' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
                 }>
                   {currentSession.status}
                 </Badge>
               </CardTitle>
-              
+
               <div className="flex items-center space-x-2">
                 <span className="text-sm text-muted-foreground">
                   {currentSession.aiModel}
@@ -647,7 +614,7 @@ export function PromptOptimization({
               </div>
             </div>
           </CardHeader>
-          
+
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
@@ -693,7 +660,7 @@ export function PromptOptimization({
               ))}
             </SelectContent>
           </Select>
-          
+
           <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="All difficulties" />
@@ -705,7 +672,7 @@ export function PromptOptimization({
               <SelectItem value="hard">Hard</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <div className="text-sm text-muted-foreground">
             {filteredSuggestions.length} of {currentSession.suggestions.length} suggestions
           </div>
@@ -720,11 +687,11 @@ export function PromptOptimization({
             <TabsTrigger value="priority">By Priority</TabsTrigger>
             <TabsTrigger value="impact">By Impact</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="grouped" className="space-y-6">
             {Object.entries(suggestionsByType).map(([type, suggestions]) => {
               const typeInfo = getSuggestionTypeInfo(type);
-              
+
               return (
                 <div key={type}>
                   <div className="flex items-center space-x-2 mb-4">
@@ -732,7 +699,7 @@ export function PromptOptimization({
                     <h4 className="text-lg font-semibold">{typeInfo.label}</h4>
                     <Badge variant="outline">{suggestions.length}</Badge>
                   </div>
-                  
+
                   <div className="space-y-4">
                     {suggestions.map(renderSuggestionCard)}
                   </div>
@@ -740,13 +707,13 @@ export function PromptOptimization({
               );
             })}
           </TabsContent>
-          
+
           <TabsContent value="priority" className="space-y-4">
             {filteredSuggestions
               .sort((a, b) => b.confidence - a.confidence)
               .map(renderSuggestionCard)}
           </TabsContent>
-          
+
           <TabsContent value="impact" className="space-y-4">
             {filteredSuggestions
               .sort((a, b) => {
@@ -781,7 +748,7 @@ export function PromptOptimization({
               Set your optimization goals and constraints to get tailored suggestions
             </DialogDescription>
           </DialogHeader>
-          
+
           <form onSubmit={form.handleSubmit(startOptimization)} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -805,7 +772,7 @@ export function PromptOptimization({
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="priorityLevel">Priority Level</Label>
                 <Select
@@ -824,7 +791,7 @@ export function PromptOptimization({
                 </Select>
               </div>
             </div>
-            
+
             <div>
               <Label>Optimization Goals</Label>
               <div className="grid grid-cols-2 gap-2 mt-2">
@@ -860,7 +827,7 @@ export function PromptOptimization({
                 </p>
               )}
             </div>
-            
+
             <div>
               <Label>Constraints</Label>
               <div className="grid grid-cols-2 gap-4 mt-2">
@@ -905,7 +872,7 @@ export function PromptOptimization({
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button
                 type="button"

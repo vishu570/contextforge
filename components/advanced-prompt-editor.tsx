@@ -1,74 +1,42 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import dynamic from 'next/dynamic';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
-  Save, 
-  X, 
-  Eye, 
-  Clock, 
-  AlertTriangle, 
-  Lightbulb, 
-  History, 
-  GitBranch,
-  Tags,
-  Settings,
-  FileText,
-  Share,
-  Play,
-  Copy,
-  Download,
-  Upload,
-  Code2,
-  Zap,
-  BarChart3,
-  Users,
-  MessageSquare,
-  Workflow,
-  Calculator,
-  TestTube,
-  Table,
-  List,
-  Type,
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
   Bold,
-  Italic,
-  Underline,
-  Link,
-  Image,
-  Hash,
-  Quote,
+  Calculator,
+  Clock,
   Code,
-  AlignLeft,
-  AlignCenter,
-  AlignRight,
-  ChevronDown,
-  Plus,
-  Minus,
+  Download,
+  Eye,
+  FileText,
+  Hash,
+  Italic,
+  Layers,
+  List,
   Maximize2,
   Minimize2,
+  Quote,
+  Save,
   Split,
-  RefreshCw,
-  Target,
-  Layers,
-  Filter,
+  Table,
+  X
 } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 // Dynamically import Monaco Editor
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
@@ -163,10 +131,10 @@ interface AdvancedPromptEditorProps {
 }
 
 const AI_MODELS = [
-  { id: 'gpt-5-2025-08-07', name: 'GPT-5', provider: 'OpenAI', costPer1K: 0.01 },
+  { id: 'gpt-5-mini-2025-08-07', name: 'GPT-5', provider: 'OpenAI', costPer1K: 0.01 },
   { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', costPer1K: 0.005 },
   { id: 'claude-sonnet-4-20250514', name: 'Claude 4 Sonnet', provider: 'Anthropic', costPer1K: 0.003 },
-  { id: 'claude-haiku-4-20250514', name: 'Claude 4 Haiku', provider: 'Anthropic', costPer1K: 0.001 },
+  { id: 'claude-3-5-haiku-latest', name: 'Claude 4 Haiku', provider: 'Anthropic', costPer1K: 0.001 },
   { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', costPer1K: 0.0035 },
 ];
 
@@ -222,34 +190,34 @@ export function AdvancedPromptEditor({
   const [previewMode, setPreviewMode] = useState(false);
   const [splitView, setSplitView] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  
+
   // Variables and templates
   const [variables, setVariables] = useState<PromptVariable[]>(initialData?.variables || []);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
   const [showTemplateBlocks, setShowTemplateBlocks] = useState(false);
-  
+
   // Collaboration
   const [comments, setComments] = useState<CollaboratorComment[]>([]);
   const [showComments, setShowComments] = useState(false);
   const [collaborators, setCollaborators] = useState<string[]>([]);
-  
+
   // Versioning
   const [versions, setVersions] = useState<Version[]>([]);
   const [showVersions, setShowVersions] = useState(false);
   const [currentVersion, setCurrentVersion] = useState<number>(1);
-  
+
   // Testing and Analytics
   const [testResults, setTestResults] = useState<any[]>([]);
   const [tokenCount, setTokenCount] = useState(0);
   const [estimatedCost, setEstimatedCost] = useState(0);
   const [performanceMetrics, setPerformanceMetrics] = useState<any>({});
-  
+
   // A/B Testing
   const [abTests, setAbTests] = useState<any[]>([]);
   const [showAbTesting, setShowAbTesting] = useState(false);
-  
+
   const editorRef = useRef<any>(null);
-  
+
   const form = useForm<AdvancedPromptFormData>({
     resolver: zodResolver(advancedPromptSchema),
     defaultValues: {
@@ -257,7 +225,7 @@ export function AdvancedPromptEditor({
       content: initialData?.content || '',
       description: initialData?.description || '',
       variables: variables,
-      targetModels: initialData?.targetModels || ['gpt-5-2025-08-07'],
+      targetModels: initialData?.targetModels || ['gpt-5-mini-2025-08-07'],
       format: initialData?.format || 'text',
       category: initialData?.category || '',
       tags: initialData?.tags || [],
@@ -280,21 +248,21 @@ export function AdvancedPromptEditor({
     // Simplified token calculation (4 chars ≈ 1 token for GPT models)
     const tokens = Math.ceil(text.length / 4);
     setTokenCount(tokens);
-    
+
     // Calculate cost based on selected models
     const selectedModels = getValues('targetModels');
     const avgCost = selectedModels.reduce((sum, modelId) => {
       const model = AI_MODELS.find(m => m.id === modelId);
       return sum + (model?.costPer1K || 0);
     }, 0) / selectedModels.length;
-    
+
     setEstimatedCost((tokens / 1000) * avgCost);
   }, [getValues]);
 
   // Auto-save functionality
   const autoSave = useCallback(async () => {
     if (!watchedContent || readonly) return;
-    
+
     try {
       setAutoSaveStatus('saving');
       // Simulate auto-save API call
@@ -354,21 +322,21 @@ export function AdvancedPromptEditor({
     const currentContent = getValues('content');
     const newContent = currentContent + '\n\n' + block.content;
     setValue('content', newContent);
-    
+
     // Add variables from template block
     block.variables.forEach(variable => {
       if (!variables.find(v => v.name === variable.name)) {
         handleVariableAdd(variable);
       }
     });
-    
+
     setShowTemplateBlocks(false);
   };
 
   const handleFormat = (type: string) => {
     const selection = editorRef.current?.getSelection();
     const content = getValues('content');
-    
+
     // Simple formatting logic (would be more sophisticated in real implementation)
     let formattedText = '';
     switch (type) {
@@ -393,21 +361,21 @@ export function AdvancedPromptEditor({
       default:
         return;
     }
-    
+
     setValue('content', content + formattedText);
   };
 
   const exportPrompt = (format: 'json' | 'yaml' | 'txt') => {
     const data = getValues();
     let exportContent = '';
-    
+
     switch (format) {
       case 'json':
         exportContent = JSON.stringify(data, null, 2);
         break;
       case 'yaml':
         // Simple YAML conversion (would use proper YAML library in real implementation)
-        exportContent = Object.entries(data).map(([key, value]) => 
+        exportContent = Object.entries(data).map(([key, value]) =>
           `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`
         ).join('\n');
         break;
@@ -415,7 +383,7 @@ export function AdvancedPromptEditor({
         exportContent = data.content;
         break;
     }
-    
+
     const blob = new Blob([exportContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -450,7 +418,7 @@ export function AdvancedPromptEditor({
               disabled={readonly}
             />
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {/* Token count and cost */}
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
@@ -463,9 +431,9 @@ export function AdvancedPromptEditor({
                 <span>${estimatedCost.toFixed(4)}</span>
               </div>
             </div>
-            
+
             <Separator orientation="vertical" className="h-6" />
-            
+
             {/* View controls */}
             <Button
               type="button"
@@ -475,7 +443,7 @@ export function AdvancedPromptEditor({
             >
               <Split className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant={isFullscreen ? "default" : "outline"}
@@ -484,7 +452,7 @@ export function AdvancedPromptEditor({
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
-            
+
             {/* Export menu */}
             <Select onValueChange={(value) => exportPrompt(value as any)}>
               <SelectTrigger className="w-32">
@@ -522,7 +490,7 @@ export function AdvancedPromptEditor({
                       <FileText className="h-5 w-5" />
                       <span>Prompt Editor</span>
                     </CardTitle>
-                    
+
                     {/* Formatting toolbar */}
                     <div className="flex items-center space-x-1">
                       <Button
@@ -579,9 +547,9 @@ export function AdvancedPromptEditor({
                       >
                         <Table className="h-4 w-4" />
                       </Button>
-                      
+
                       <Separator orientation="vertical" className="h-6" />
-                      
+
                       <Button
                         type="button"
                         variant="outline"
@@ -607,7 +575,7 @@ export function AdvancedPromptEditor({
                         disabled={readonly}
                       />
                     </div>
-                    
+
                     <div>
                       <Label htmlFor="content">Prompt Content</Label>
                       <div className="mt-2 border rounded-md overflow-hidden">
@@ -638,7 +606,7 @@ export function AdvancedPromptEditor({
                   </div>
                 </CardContent>
               </Card>
-              
+
               {/* Preview Panel (only in split view) */}
               {splitView && (
                 <Card>
@@ -803,8 +771,8 @@ export function AdvancedPromptEditor({
                 </CardHeader>
                 <CardContent>
                   <pre className="text-xs text-muted-foreground whitespace-pre-wrap mb-3">
-                    {block.content.length > 100 
-                      ? block.content.substring(0, 100) + '...' 
+                    {block.content.length > 100
+                      ? block.content.substring(0, 100) + '...'
                       : block.content
                     }
                   </pre>

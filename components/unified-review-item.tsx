@@ -103,6 +103,8 @@ interface UnifiedReviewItemProps {
   isProcessing: boolean;
   availableFolders?: string[];
   availableTags?: string[];
+  customPaths?: Map<string, string>; // Store custom paths by item ID
+  onCustomPathChange?: (itemId: string, path: string) => void;
 }
 
 export function UnifiedReviewItem({ 
@@ -114,13 +116,18 @@ export function UnifiedReviewItem({
   onRunClassification,
   isProcessing,
   availableFolders = [],
-  availableTags = []
+  availableTags = [],
+  customPaths,
+  onCustomPathChange
 }: UnifiedReviewItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItem, setEditedItem] = useState(item);
   const [newTag, setNewTag] = useState('');
   const [showFolderSearch, setShowFolderSearch] = useState(false);
-  const [customPath, setCustomPath] = useState(item.suggestedPath || '');
+  // Use custom path from parent if available, otherwise fall back to suggested path
+  const [customPath, setCustomPath] = useState(
+    customPaths?.get(item.id) || item.suggestedPath || ''
+  );
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   
   const Icon = typeIcons[item.type];
@@ -377,7 +384,10 @@ export function UnifiedReviewItem({
                       <CommandInput 
                         placeholder="Search or enter custom path..." 
                         value={customPath}
-                        onValueChange={setCustomPath}
+                        onValueChange={(value) => {
+                          setCustomPath(value);
+                          onCustomPathChange?.(item.id, value);
+                        }}
                       />
                       <CommandList>
                         <CommandEmpty>

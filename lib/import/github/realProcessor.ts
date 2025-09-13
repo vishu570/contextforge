@@ -15,6 +15,7 @@ export interface GitHubImportOptions {
   pathGlob?: string;
   fileExtensions?: string[];
   excludePaths?: string[];
+  excludeDocFiles?: boolean; // Default true - exclude README, CONTRIBUTING, etc.
 }
 
 export class GitHubProcessor {
@@ -57,6 +58,28 @@ export class GitHubProcessor {
     path: string,
     options: GitHubImportOptions
   ): boolean {
+    const filename = path.split('/').pop()?.toLowerCase() || '';
+    
+    // Always exclude certain documentation files unless explicitly included
+    const excludeDocFiles = options.excludeDocFiles !== false; // Default to true
+    if (excludeDocFiles) {
+      const docFiles = [
+        'readme.md', 'readme.txt', 'readme',
+        'contributing.md', 'contributing.txt', 'contributing',
+        'license.md', 'license.txt', 'license', 'license.txt',
+        'changelog.md', 'changelog.txt', 'changelog',
+        'code_of_conduct.md', 'code_of_conduct.txt',
+        'security.md', 'security.txt',
+        'authors.md', 'authors.txt', 'authors',
+        'maintainers.md', 'maintainers.txt',
+        'install.md', 'install.txt', 'installation.md'
+      ];
+      
+      if (docFiles.some(docFile => filename === docFile || filename.endsWith('/' + docFile))) {
+        return false;
+      }
+    }
+
     // Check excluded paths
     if (options.excludePaths) {
       for (const excludePath of options.excludePaths) {

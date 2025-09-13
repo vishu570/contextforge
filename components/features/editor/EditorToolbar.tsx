@@ -25,6 +25,7 @@ interface EditorToolbarProps {
   activeTab?: EditorTab;
   onSave: () => void;
   onToggleSidebar: () => void;
+  onToggleImport?: () => void;
   sidebarExpanded: boolean;
 }
 
@@ -32,6 +33,7 @@ export function EditorToolbar({
   activeTab,
   onSave,
   onToggleSidebar,
+  onToggleImport,
   sidebarExpanded
 }: EditorToolbarProps) {
   const exportContent = () => {
@@ -79,16 +81,17 @@ export function EditorToolbar({
 
         {/* Main actions */}
         <div className="flex items-center space-x-2 ml-6">
-          <Link href="/dashboard/import">
+          {onToggleImport && (
             <Button
               variant="ghost"
               size="sm"
+              onClick={onToggleImport}
               className="h-8 text-xs"
             >
               <Upload className="h-3 w-3 mr-1" />
               Import
             </Button>
-          </Link>
+          )}
 
           {/* File actions - only show when active tab */}
           {activeTab && (
@@ -162,12 +165,12 @@ export function EditorToolbar({
                 Dashboard
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/import">
+            {onToggleImport && (
+              <DropdownMenuItem onClick={onToggleImport}>
                 <Upload className="mr-2 h-4 w-4" />
                 Import
-              </Link>
-            </DropdownMenuItem>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link href="/dashboard/settings">
                 Settings

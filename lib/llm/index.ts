@@ -126,7 +126,7 @@ Respond in JSON format with fields: type, confidence, reasoning`
             model:
               config?.model ||
               process.env.OPENAI_DEFAULT_MODEL ||
-              "gpt-5-2025-08-07",
+              "gpt-5-mini-2025-08-07",
             messages: [{ role: "user", content: enhancedPrompt }],
             temperature: config?.temperature || 0.3,
             max_tokens: config?.maxTokens || 800,
@@ -221,7 +221,7 @@ Respond in JSON format with fields: optimizedContent, suggestions (array), confi
             model:
               config?.model ||
               process.env.OPENAI_DEFAULT_MODEL ||
-              "gpt-5-2025-08-07",
+              "gpt-5-mini-2025-08-07",
             messages: [{ role: "user", content: prompt }],
             temperature: config?.temperature || 0.4,
             max_tokens: config?.maxTokens || 1500,
@@ -307,7 +307,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
             model:
               config?.model ||
               process.env.OPENAI_DEFAULT_MODEL ||
-              "gpt-5-2025-08-07",
+              "gpt-5-mini-2025-08-07",
             messages: [{ role: "user", content: prompt }],
             temperature: config?.temperature || 0.2,
             max_tokens: config?.maxTokens || 2000,
@@ -524,7 +524,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
             model:
               options?.model ||
               process.env.OPENAI_DEFAULT_MODEL ||
-              "gpt-5-2025-08-07",
+              "gpt-5-mini-2025-08-07",
             messages: [{ role: "user", content: prompt }],
             temperature: options?.temperature || 0.3,
             max_tokens: options?.maxTokens || 1000,
@@ -535,7 +535,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case "anthropic":
           if (!this.anthropic) throw new Error("Anthropic not configured")
           const anthropicResponse = await this.anthropic.messages.create({
-            model: options?.model || "claude-haiku-4-20250514",
+            model: options?.model || "claude-3-5-haiku-latest",
             messages: [{ role: "user", content: prompt }],
             max_tokens: options?.maxTokens || 1000,
             temperature: options?.temperature || 0.3,

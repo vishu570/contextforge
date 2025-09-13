@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { getModelConfigs, ModelConfig } from '@/lib/models/config';
-import { Settings, Zap, DollarSign, Gauge } from 'lucide-react';
+import { DollarSign, Gauge, Settings, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface ModelSettingsProps {
   userId?: string;
@@ -70,7 +69,7 @@ export function ModelSettings({ userId }: ModelSettingsProps) {
               <Label htmlFor="default-model">Default Model</Label>
               <Select
                 value={userPreferences.defaultModel}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   setUserPreferences(prev => ({ ...prev, defaultModel: value }))
                 }
               >
@@ -96,7 +95,7 @@ export function ModelSettings({ userId }: ModelSettingsProps) {
               <Label htmlFor="fast-model">Fast/Cheap Model</Label>
               <Select
                 value={userPreferences.fastModel}
-                onValueChange={(value) => 
+                onValueChange={(value) =>
                   setUserPreferences(prev => ({ ...prev, fastModel: value }))
                 }
               >
@@ -125,10 +124,10 @@ export function ModelSettings({ userId }: ModelSettingsProps) {
               id="token-budget"
               type="number"
               value={userPreferences.maxTokenBudget}
-              onChange={(e) => 
-                setUserPreferences(prev => ({ 
-                  ...prev, 
-                  maxTokenBudget: parseInt(e.target.value) || 0 
+              onChange={(e) =>
+                setUserPreferences(prev => ({
+                  ...prev,
+                  maxTokenBudget: parseInt(e.target.value) || 0
                 }))
               }
               placeholder="50000"
@@ -144,7 +143,7 @@ export function ModelSettings({ userId }: ModelSettingsProps) {
             </div>
             <Switch
               checked={userPreferences.costSensitive}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setUserPreferences(prev => ({ ...prev, costSensitive: checked }))
               }
             />
@@ -159,7 +158,7 @@ export function ModelSettings({ userId }: ModelSettingsProps) {
             </div>
             <Switch
               checked={userPreferences.autoOptimize}
-              onCheckedChange={(checked) => 
+              onCheckedChange={(checked) =>
                 setUserPreferences(prev => ({ ...prev, autoOptimize: checked }))
               }
             />
@@ -243,9 +242,9 @@ export function ModelSettings({ userId }: ModelSettingsProps) {
         <CardContent>
           <div className="bg-muted p-4 rounded-lg font-mono text-sm space-y-1">
             <div>ANTHROPIC_DEFAULT_MODEL=claude-sonnet-4-20250514</div>
-            <div>OPENAI_DEFAULT_MODEL=gpt-5-2025-08-07</div>
+            <div>OPENAI_DEFAULT_MODEL=gpt-5-mini-2025-08-07</div>
             <div>GOOGLE_DEFAULT_MODEL=gemini-2.0-flash</div>
-            <div>ANTHROPIC_FAST_MODEL=claude-haiku-4-20250514</div>
+            <div>ANTHROPIC_FAST_MODEL=claude-3-5-haiku-latest</div>
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             Restart the application after changing environment variables.

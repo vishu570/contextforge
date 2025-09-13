@@ -1,58 +1,47 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  ReferenceLine,
-  ScatterChart,
-  Scatter
-} from 'recharts';
-import {
-  Brain,
-  DollarSign,
-  Zap,
-  Clock,
-  Target,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  CheckCircle,
-  Activity,
-  Gauge,
-  BarChart3,
-  PieChart as PieChartIcon,
-  Settings,
-  Download,
-  RefreshCw,
-  Info,
-  Star,
-  Cpu,
-  Database,
-  Server
-} from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import {
+  Activity,
+  AlertTriangle,
+  Brain,
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Gauge,
+  Info,
+  PieChart as PieChartIcon,
+  RefreshCw,
+  Target,
+  TrendingDown,
+  TrendingUp
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis
+} from 'recharts';
 
 interface AIPerformanceData {
   modelUsage: Record<string, {
@@ -105,10 +94,10 @@ interface AIPerformanceAnalyticsProps {
 }
 
 const MODEL_COLORS = {
-  'gpt-5-2025-08-07': '#10b981',
+  'gpt-5-mini-2025-08-07': '#10b981',
   'gpt-4o': '#3b82f6',
   'claude-sonnet-4-20250514': '#8b5cf6',
-  'claude-haiku-4-20250514': '#a855f7',
+  'claude-3-5-haiku-latest': '#a855f7',
   'claude-opus-4-20250514': '#c084fc',
   'gemini-2.0-flash': '#f59e0b',
   'gemini-pro': '#fbbf24'
@@ -257,7 +246,7 @@ export function AIPerformanceAnalytics({
             Monitor AI model performance, costs, and optimization opportunities
           </p>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <Select value={selectedModel} onValueChange={setSelectedModel}>
             <SelectTrigger className="w-40">
@@ -273,7 +262,7 @@ export function AIPerformanceAnalytics({
               ))}
             </SelectContent>
           </Select>
-          
+
           <Button variant="outline" onClick={fetchData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
@@ -307,7 +296,7 @@ export function AIPerformanceAnalytics({
           <CardContent>
             <div className="text-2xl font-bold">
               {formatDuration(
-                Object.values(data.processingMetrics).reduce((sum, m) => sum + m.avgTime, 0) / 
+                Object.values(data.processingMetrics).reduce((sum, m) => sum + m.avgTime, 0) /
                 Object.values(data.processingMetrics).length || 0
               )}
             </div>
@@ -381,7 +370,7 @@ export function AIPerformanceAnalytics({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="model" />
                     <YAxis domain={[0, 100]} />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: any, name: string) => [
                         name === 'successRate' ? `${value.toFixed(1)}%` : value,
                         name === 'successRate' ? 'Success Rate' : name
@@ -411,7 +400,7 @@ export function AIPerformanceAnalytics({
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="type" />
                     <YAxis />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value: any) => [`${value.toFixed(2)}s`, 'Avg Time']}
                     />
                     <Bar dataKey="avgTime" fill="#3b82f6" />
@@ -520,8 +509,8 @@ export function AIPerformanceAnalytics({
                         <span>{cost.requestCount} requests</span>
                         <span>Total: {formatCurrency(cost.totalCost)}</span>
                       </div>
-                      <Progress 
-                        value={(cost.avgCost / Math.max(...Object.values(data.costAnalysis).map(c => c.avgCost))) * 100} 
+                      <Progress
+                        value={(cost.avgCost / Math.max(...Object.values(data.costAnalysis).map(c => c.avgCost))) * 100}
                         className="h-2"
                       />
                     </div>
@@ -550,7 +539,7 @@ export function AIPerformanceAnalytics({
                     Potential savings: $0.25/day
                   </Badge>
                 </div>
-                
+
                 <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <h4 className="font-medium text-green-900">Optimize Token Usage</h4>
                   <p className="text-sm text-green-700 mt-1">
@@ -560,7 +549,7 @@ export function AIPerformanceAnalytics({
                     Potential savings: $0.18/day
                   </Badge>
                 </div>
-                
+
                 <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
                   <h4 className="font-medium text-purple-900">Batch Processing</h4>
                   <p className="text-sm text-purple-700 mt-1">
@@ -604,15 +593,15 @@ export function AIPerformanceAnalytics({
                     {Object.entries(data.modelUsage).map(([model, stats]) => {
                       const costData = data.costAnalysis[model];
                       const processingData = data.processingMetrics[model];
-                      
+
                       return (
                         <tr key={model} className="border-b">
                           <td className="p-2 font-medium">{model}</td>
                           <td className="text-right p-2">{stats.total.toLocaleString()}</td>
                           <td className="text-right p-2">
                             <Badge variant={
-                              (stats.completed / stats.total) > 0.95 ? 'default' : 
-                              (stats.completed / stats.total) > 0.9 ? 'secondary' : 'destructive'
+                              (stats.completed / stats.total) > 0.95 ? 'default' :
+                                (stats.completed / stats.total) > 0.9 ? 'secondary' : 'destructive'
                             }>
                               {stats.total > 0 ? ((stats.completed / stats.total) * 100).toFixed(1) : 0}%
                             </Badge>
@@ -657,19 +646,19 @@ export function AIPerformanceAnalytics({
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip />
                   <Legend />
-                  <Line 
+                  <Line
                     yAxisId="left"
-                    type="monotone" 
-                    dataKey="responseTime" 
-                    stroke="#3b82f6" 
+                    type="monotone"
+                    dataKey="responseTime"
+                    stroke="#3b82f6"
                     strokeWidth={2}
                     name="Response Time (ms)"
                   />
-                  <Line 
+                  <Line
                     yAxisId="right"
-                    type="monotone" 
-                    dataKey="successRate" 
-                    stroke="#10b981" 
+                    type="monotone"
+                    dataKey="successRate"
+                    stroke="#10b981"
                     strokeWidth={2}
                     name="Success Rate (%)"
                   />
@@ -696,7 +685,7 @@ export function AIPerformanceAnalytics({
                   <XAxis dataKey="date" />
                   <YAxis yAxisId="left" />
                   <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: any, name: string) => [
                       name === 'cost' ? formatCurrency(value) : value,
                       name === 'cost' ? 'Daily Cost' : 'Requests'

@@ -195,11 +195,13 @@ const githubImportRequestSchema = z.object({
         .array(z.string())
         .optional()
         .default(["node_modules", ".git"]),
+      excludeDocFiles: z.boolean().optional().default(true),
     })
     .optional()
     .default({
       fileExtensions: [".md", ".txt", ".json", ".yml", ".yaml"],
       excludePaths: ["node_modules", ".git"],
+      excludeDocFiles: true,
     }),
   autoCategorie: z.boolean().optional().default(true),
   collectionId: z.string().optional(),
@@ -404,13 +406,25 @@ export async function POST(request: NextRequest) {
       })
 
       // Initialize progress tracking
+      console.log(`Creating initial progress for import ${importRecord.id}`)
       updateProgress(importRecord.id, {
         status: "starting",
-        progress: 0,
+        progress: 5,
         message: `Starting import from ${repoOwner}/${repoName}`,
         totalFiles: 0,
         processedFiles: 0,
       })
+
+      // Add a small delay and another progress update to ensure SSE picks it up
+      setTimeout(() => {
+        updateProgress(importRecord.id, {
+          status: "scanning",
+          progress: 10,
+          message: `Connecting to GitHub repository ${repoOwner}/${repoName}`,
+          totalFiles: 0,
+          processedFiles: 0,
+        })
+      }, 100)
 
       // Import repository using real GitHub API with progress callback
       console.log("About to call githubProcessor.importRepository with:", {
@@ -426,6 +440,7 @@ export async function POST(request: NextRequest) {
           branch: validatedData.branch,
           fileExtensions: validatedData.filters?.fileExtensions,
           excludePaths: validatedData.filters?.excludePaths,
+          excludeDocFiles: validatedData.filters?.excludeDocFiles,
         },
         (progress) => {
           // Progress callback from GitHubProcessor

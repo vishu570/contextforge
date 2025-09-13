@@ -1,5 +1,5 @@
 import { getUserFromToken } from "@/lib/auth"
-import { getProgress } from "@/lib/import/progress"
+import { getProgress, progressStore } from "@/lib/import/progress"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
@@ -60,13 +60,22 @@ export async function GET(request: NextRequest) {
         console.log(`SSE checking progress for ${importId}:`, progress)
 
         // Debug: Check if we have any progress stored at all
-        const { progressStore } = require("@/lib/import/progress")
-        console.log(`All stored progress:`, Array.from(progressStore.keys()))
+        const allKeys = Array.from(progressStore.keys())
+        console.log(`All stored progress keys (${allKeys.length}):`, allKeys)
+        
+        // Extra debugging - show what's actually in the store
+        if (allKeys.length > 0) {
+          allKeys.forEach(key => {
+            console.log(`Progress for ${key}:`, getProgress(key))
+          })
+        }
 
         if (progress) {
           const data = `data: ${JSON.stringify(progress)}\n\n`
+          console.log(`SSE sending data for ${importId}:`, data.trim())
           try {
             controller.enqueue(encoder.encode(data))
+            console.log(`SSE data sent successfully for ${importId}`)
           } catch (error) {
             console.error("SSE controller error:", error)
             isClosed = true
@@ -85,7 +94,8 @@ export async function GET(request: NextRequest) {
             return
           }
         } else {
-          // Send heartbeat to keep connection alive
+          // Send heartbeat to keep connection alive, but also check if we should create a default progress
+          console.log(`No progress found for ${importId}, sending heartbeat`)
           try {
             controller.enqueue(encoder.encode(`: heartbeat\n\n`))
           } catch (error) {

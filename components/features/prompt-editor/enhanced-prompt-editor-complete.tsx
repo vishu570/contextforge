@@ -1,79 +1,48 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import dynamic from 'next/dynamic';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { 
-  Save, 
-  X, 
-  Eye, 
-  Clock, 
-  AlertTriangle, 
-  History, 
-  GitBranch,
-  Settings,
-  FileText,
-  Play,
-  Copy,
-  Download,
-  Upload,
-  Code2,
-  Zap,
-  BarChart3,
-  Users,
-  MessageSquare,
-  Calculator,
-  TestTube,
-  Target,
-  Plus,
-  Minus,
-  Maximize2,
-  Minimize2,
-  Split,
-  RefreshCw,
-  ArrowLeftRight,
-  TrendingUp,
-  TrendingDown,
-  Hash,
-  DollarSign,
-  Brain,
-  Sparkles,
-  CheckCircle,
-  Share,
-  Star,
-  ThumbsUp,
-  ThumbsDown,
-  ArrowUp,
-  ArrowDown,
-  Filter,
-  Search,
-  Calendar,
-  User,
-  Edit,
-  Trash2,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { ModelSelector, ModelSelection } from '../llm/model-selector';
-import { FunctionAttachmentSystem, FunctionDefinition } from '../functions/function-attachment-system';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  CheckCircle,
+  Clock,
+  DollarSign,
+  Download,
+  Edit,
+  GitBranch,
+  Hash,
+  Maximize2,
+  MessageSquare,
+  Minimize2,
+  Plus,
+  Save,
+  Share,
+  Split,
+  Target,
+  TestTube,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  User,
+  X
+} from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { FunctionAttachmentSystem } from '../functions/function-attachment-system';
+import { ModelSelection, ModelSelector } from '../llm/model-selector';
 
 // Dynamically import Monaco Editor
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
@@ -231,46 +200,46 @@ export function EnhancedPromptEditorComplete({
   const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'error' | null>(null);
   const [splitView, setSplitView] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  
+
   // Variables and functions
   const [variables, setVariables] = useState<PromptVariable[]>(initialData?.variables || []);
   const [attachedFunctions, setAttachedFunctions] = useState<string[]>(initialData?.attachedFunctions || []);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
   const [editingVariable, setEditingVariable] = useState<PromptVariable | null>(null);
-  
+
   // Versioning
   const [versions, setVersions] = useState<Version[]>([]);
   const [currentVersion, setCurrentVersion] = useState<string>('1.0.0');
   const [showVersionDialog, setShowVersionDialog] = useState(false);
   const [versionChanges, setVersionChanges] = useState('');
-  
+
   // A/B Testing
   const [abTests, setAbTests] = useState<ABTest[]>([]);
   const [showAbTestDialog, setShowAbTestDialog] = useState(false);
   const [newAbTest, setNewAbTest] = useState<Partial<ABTest>>({});
-  
+
   // Collaboration
   const [comments, setComments] = useState<CollaboratorComment[]>([]);
   const [collaborators, setCollaborators] = useState<string[]>(['user@example.com']);
   const [newComment, setNewComment] = useState('');
   const [showCollaboration, setShowCollaboration] = useState(false);
-  
+
   // Analytics
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [optimizationSuggestions, setOptimizationSuggestions] = useState<OptimizationSuggestion[]>([]);
-  
+
   // Model configurations
   const [modelConfigs, setModelConfigs] = useState<ModelSelection[]>([
-    { modelId: 'gpt-5-2025-08-07', temperature: 0.7, maxTokens: 1000 }
+    { modelId: 'gpt-5-mini-2025-08-07', temperature: 0.7, maxTokens: 1000 }
   ]);
-  
+
   // Performance metrics
   const [tokenCount, setTokenCount] = useState(0);
   const [estimatedCost, setEstimatedCost] = useState(0);
   const [qualityScore, setQualityScore] = useState(0);
-  
+
   const editorRef = useRef<any>(null);
-  
+
   const form = useForm<EnhancedPromptFormData>({
     resolver: zodResolver(enhancedPromptSchema),
     defaultValues: {
@@ -312,13 +281,13 @@ export function EnhancedPromptEditorComplete({
   const calculateMetrics = useCallback((text: string) => {
     const tokens = Math.ceil(text.length / 4);
     setTokenCount(tokens);
-    
+
     // Calculate cost across all configured models
     const totalCost = modelConfigs.reduce((sum, config) => {
       return sum + ((tokens / 1000) * 0.003); // Simplified cost calculation
     }, 0);
     setEstimatedCost(totalCost);
-    
+
     // Calculate quality score based on content length, structure, etc.
     const score = Math.min(100, (text.length / 10) + (text.split('\n').length * 2));
     setQualityScore(score);
@@ -331,7 +300,7 @@ export function EnhancedPromptEditorComplete({
   // Auto-save functionality
   const autoSave = useCallback(async () => {
     if (!watchedContent || readonly) return;
-    
+
     try {
       setAutoSaveStatus('saving');
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -378,7 +347,7 @@ export function EnhancedPromptEditorComplete({
         avgResponseTime: 2340,
         avgQualityScore: 87.3,
         topModels: [
-          { modelId: 'gpt-5-2025-08-07', score: 91.2 },
+          { modelId: 'gpt-5-mini-2025-08-07', score: 91.2 },
           { modelId: 'claude-sonnet-4-20250514', score: 88.7 }
         ]
       },
@@ -505,11 +474,11 @@ export function EnhancedPromptEditorComplete({
       createdBy: 'current-user@example.com',
       approved: false
     };
-    
+
     setVersions([newVersion, ...versions]);
     setShowVersionDialog(false);
     setVersionChanges('');
-    
+
     toast({
       title: 'Version Created',
       description: `Version ${currentVersion} has been created`
@@ -563,7 +532,7 @@ export function EnhancedPromptEditorComplete({
 
     setComments([...comments, comment]);
     setNewComment('');
-    
+
     toast({
       title: 'Comment Added',
       description: 'Your comment has been added'
@@ -577,9 +546,9 @@ export function EnhancedPromptEditorComplete({
     // Apply the suggested change to the content
     // In a real implementation, this would intelligently modify the content
     setValue('content', watchedContent + '\n\n[Applied optimization: ' + suggestion.title + ']');
-    
+
     // Mark as applied
-    setOptimizationSuggestions(prev => 
+    setOptimizationSuggestions(prev =>
       prev.map(s => s.id === suggestionId ? { ...s, applied: true } : s)
     );
 
@@ -648,7 +617,7 @@ export function EnhancedPromptEditorComplete({
               disabled={readonly}
             />
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {/* Metrics */}
             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
@@ -665,9 +634,9 @@ export function EnhancedPromptEditorComplete({
                 <span>{qualityScore.toFixed(1)}</span>
               </div>
             </div>
-            
+
             <Separator orientation="vertical" className="h-6" />
-            
+
             {/* Controls */}
             <Button
               type="button"
@@ -677,7 +646,7 @@ export function EnhancedPromptEditorComplete({
             >
               <Split className="h-4 w-4" />
             </Button>
-            
+
             <Button
               type="button"
               variant={isFullscreen ? "default" : "outline"}
@@ -686,7 +655,7 @@ export function EnhancedPromptEditorComplete({
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
-            
+
             <Select onValueChange={(value) => exportPrompt(value as any)}>
               <SelectTrigger className="w-32">
                 <Download className="h-4 w-4 mr-2" />
@@ -731,7 +700,7 @@ export function EnhancedPromptEditorComplete({
                       disabled={readonly}
                     />
                   </div>
-                  
+
                   <div>
                     <Label>Content</Label>
                     <div className="mt-2 border rounded-md overflow-hidden">
@@ -761,12 +730,12 @@ export function EnhancedPromptEditorComplete({
                         disabled={readonly}
                       />
                     </div>
-                    
+
                     <div>
                       <Label>Tags</Label>
                       <Input
                         value={watch('tags')?.join(', ') || ''}
-                        onChange={(e) => setValue('tags', 
+                        onChange={(e) => setValue('tags',
                           e.target.value.split(',').map(tag => tag.trim()).filter(Boolean)
                         )}
                         placeholder="ai, analysis, productivity"
@@ -776,7 +745,7 @@ export function EnhancedPromptEditorComplete({
                   </div>
                 </CardContent>
               </Card>
-              
+
               {splitView && (
                 <Card>
                   <CardHeader>
@@ -837,7 +806,7 @@ export function EnhancedPromptEditorComplete({
                                 <Badge variant="destructive">Required</Badge>
                               )}
                             </div>
-                            
+
                             <div className="flex space-x-2">
                               <Button
                                 variant="outline"
@@ -862,13 +831,13 @@ export function EnhancedPromptEditorComplete({
                               </Button>
                             </div>
                           </div>
-                          
+
                           {variable.description && (
                             <p className="text-sm text-muted-foreground mt-2">
                               {variable.description}
                             </p>
                           )}
-                          
+
                           {variable.defaultValue && (
                             <div className="text-xs mt-2">
                               <span className="font-medium">Default: </span>
@@ -932,12 +901,12 @@ export function EnhancedPromptEditorComplete({
                   </CardContent>
                 </Card>
               ))}
-              
+
               <Button
                 variant="outline"
                 onClick={() => {
                   setModelConfigs([...modelConfigs, {
-                    modelId: 'gpt-5-2025-08-07',
+                    modelId: 'gpt-5-mini-2025-08-07',
                     temperature: 0.7,
                     maxTokens: 1000
                   }]);
@@ -1017,7 +986,7 @@ export function EnhancedPromptEditorComplete({
                                 By {version.createdBy} • {new Date(version.createdAt).toLocaleString()}
                               </div>
                             </div>
-                            
+
                             {version.performance && (
                               <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                                 <div>{version.performance.avgTokens} tokens</div>
@@ -1096,7 +1065,7 @@ export function EnhancedPromptEditorComplete({
                                     <div className="flex items-center space-x-2 mb-2">
                                       <Badge variant={
                                         suggestion.priority === 'high' ? 'destructive' :
-                                        suggestion.priority === 'medium' ? 'default' : 'secondary'
+                                          suggestion.priority === 'medium' ? 'default' : 'secondary'
                                       }>
                                         {suggestion.priority}
                                       </Badge>
@@ -1109,7 +1078,7 @@ export function EnhancedPromptEditorComplete({
                                     <p className="text-sm bg-muted p-2 rounded">
                                       {suggestion.suggestedChange}
                                     </p>
-                                    
+
                                     {suggestion.estimatedImpact && (
                                       <div className="flex items-center space-x-4 mt-2 text-xs">
                                         {suggestion.estimatedImpact.costReduction && (
@@ -1127,7 +1096,7 @@ export function EnhancedPromptEditorComplete({
                                       </div>
                                     )}
                                   </div>
-                                  
+
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -1176,9 +1145,9 @@ export function EnhancedPromptEditorComplete({
                         <MessageSquare className="h-4 w-4" />
                       </Button>
                     </div>
-                    
+
                     <Separator />
-                    
+
                     {/* Comments List */}
                     {comments.length === 0 ? (
                       <div className="text-center py-4 text-muted-foreground">
@@ -1202,14 +1171,14 @@ export function EnhancedPromptEditorComplete({
                               </span>
                             </div>
                             <p className="text-sm">{comment.content}</p>
-                            
+
                             {!comment.resolved && (
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="mt-2"
                                 onClick={() => {
-                                  setComments(comments.map(c => 
+                                  setComments(comments.map(c =>
                                     c.id === comment.id ? { ...c, resolved: true } : c
                                   ));
                                 }}
@@ -1244,7 +1213,7 @@ export function EnhancedPromptEditorComplete({
                         <Badge variant="outline">Editor</Badge>
                       </div>
                     ))}
-                    
+
                     <div className="flex space-x-2">
                       <Input
                         placeholder="Add collaborator email..."
@@ -1296,7 +1265,7 @@ export function EnhancedPromptEditorComplete({
       </form>
 
       {/* Dialogs */}
-      
+
       {/* Variable Dialog */}
       <Dialog open={showVariableDialog} onOpenChange={setShowVariableDialog}>
         <DialogContent>
@@ -1308,13 +1277,13 @@ export function EnhancedPromptEditorComplete({
               Define a template variable for your prompt
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Variable Name</Label>
               <Input placeholder="variable_name" />
             </div>
-            
+
             <div>
               <Label>Type</Label>
               <Select defaultValue="string">
@@ -1330,17 +1299,17 @@ export function EnhancedPromptEditorComplete({
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label>Description</Label>
               <Textarea placeholder="What this variable represents..." rows={2} />
             </div>
-            
+
             <div className="flex items-center space-x-2">
               <Switch />
               <Label>Required</Label>
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setShowVariableDialog(false)}>
                 Cancel
@@ -1362,7 +1331,7 @@ export function EnhancedPromptEditorComplete({
               Create a new version of your prompt
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label>Version Number</Label>
@@ -1372,7 +1341,7 @@ export function EnhancedPromptEditorComplete({
                 placeholder="1.1.0"
               />
             </div>
-            
+
             <div>
               <Label>Changes</Label>
               <Textarea
@@ -1382,7 +1351,7 @@ export function EnhancedPromptEditorComplete({
                 rows={3}
               />
             </div>
-            
+
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setShowVersionDialog(false)}>
                 Cancel

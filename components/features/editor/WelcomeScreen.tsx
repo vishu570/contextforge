@@ -9,6 +9,7 @@ import {
   FileCode,
   FileText,
   Star,
+  Upload,
   Webhook,
   Zap
 } from 'lucide-react';
@@ -17,6 +18,7 @@ interface WelcomeScreenProps {
   fileTree: FileTreeItem[];
   onFileSelect: (item: FileTreeItem) => void;
   onCreateFile: (type: string) => void;
+  onShowImport?: () => void;
 }
 
 const typeIcons = {
@@ -37,7 +39,7 @@ const typeColors = {
   other: 'text-gray-400',
 };
 
-export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile }: WelcomeScreenProps) {
+export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile, onShowImport }: WelcomeScreenProps) {
   // Get recent files (sorted by update time)
   const recentFiles = fileTree
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
@@ -124,6 +126,21 @@ export function WelcomeScreen({ fileTree, onFileSelect, onCreateFile }: WelcomeS
                     </Button>
                   );
                 })}
+
+                {/* Import Button */}
+                {onShowImport && (
+                  <Button
+                    variant="ghost"
+                    className="justify-start h-auto p-3 text-left border border-dashed border-gray-600"
+                    onClick={onShowImport}
+                  >
+                    <Upload className="h-4 w-4 mr-3 text-blue-400" />
+                    <div>
+                      <div className="font-medium text-white">Import Content</div>
+                      <div className="text-sm text-gray-400">Import from GitHub, files, or URLs</div>
+                    </div>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
