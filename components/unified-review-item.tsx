@@ -125,8 +125,16 @@ export function UnifiedReviewItem({
   const [newTag, setNewTag] = useState('');
   const [showFolderSearch, setShowFolderSearch] = useState(false);
   // Use custom path from parent if available, otherwise fall back to suggested path
+  // Clean up any existing paths that incorrectly include the filename
+  const cleanPath = (path: string) => {
+    if (path.endsWith(`/${item.name}`)) {
+      return path.replace(`/${item.name}`, '');
+    }
+    return path;
+  };
+
   const [customPath, setCustomPath] = useState(
-    customPaths?.get(item.id) || item.suggestedPath || ''
+    cleanPath(customPaths?.get(item.id) || item.suggestedPath || '')
   );
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   
@@ -143,7 +151,7 @@ export function UnifiedReviewItem({
 
   const handleCancel = useCallback(() => {
     setEditedItem(item);
-    setCustomPath(item.suggestedPath || '');
+    setCustomPath(cleanPath(item.suggestedPath || ''));
     setIsEditing(false);
   }, [item]);
 
@@ -359,7 +367,7 @@ export function UnifiedReviewItem({
           
           {/* Folder Path - Always Editable */}
           <div className="space-y-2">
-            <Label>Folder Path</Label>
+            <Label>Folder Path <span className="text-xs text-gray-400">(directory only - filename is automatically added)</span></Label>
             <div className="flex items-center space-x-2">
               <div className="flex-1">
                 <Popover open={showFolderSearch} onOpenChange={setShowFolderSearch}>
@@ -373,7 +381,8 @@ export function UnifiedReviewItem({
                       <div className="flex items-center">
                         <FolderOpen className="mr-2 h-4 w-4" />
                         <span className="font-mono text-sm">
-                          {customPath || `/${item.type}s/${item.name}`}
+                          <span className="text-blue-400">{customPath || `/${item.type}s`}</span>
+                          <span className="text-gray-400">/{item.name}</span>
                         </span>
                       </div>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -405,7 +414,8 @@ export function UnifiedReviewItem({
                         <CommandGroup heading="Suggested Paths">
                           <CommandItem
                             onSelect={() => {
-                              setCustomPath(`/${item.type}s/${item.name}`);
+                              setCustomPath(`/${item.type}s`);
+                              onCustomPathChange?.(item.id, `/${item.type}s`);
                               setShowFolderSearch(false);
                             }}
                           >
@@ -415,7 +425,8 @@ export function UnifiedReviewItem({
                           {item.language && (
                             <CommandItem
                               onSelect={() => {
-                                setCustomPath(`/${item.type}s/${item.language}/${item.name}`);
+                                setCustomPath(`/${item.type}s/${item.language}`);
+                                onCustomPathChange?.(item.id, `/${item.type}s/${item.language}`);
                                 setShowFolderSearch(false);
                               }}
                             >

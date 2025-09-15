@@ -245,23 +245,29 @@ export class OpenAIProvider implements AIProvider {
     options: CategorizationOptions
   ): string {
     const itemName = this.extractItemName(content)
-    
+
     let prompt = `Analyze the following content and suggest ${
       options.maxSuggestions || 5
-    } appropriate, specific categories for organization and discovery.
+    } appropriate HIGH-LEVEL categories using exactly 2 words per tag.
+
+SPECIAL FILE DETECTION:
+- If filename is "CLAUDE.md" or content mentions "Claude Code", use tag "claude-config"
+- If content is about hooks/automation, use tag "workflow-automation"
+- If content defines AI agents/subagents, use tag "ai-agent"
+- If content is a prompt template, use tag "prompt-template"
 
 IMPORTANT RULES:
-1. DO NOT use the item name "${itemName}" as a tag
-2. DO NOT use generic words like "tool", "utility", "helper" 
-3. DO NOT create variations of the same concept (e.g., "data-visualization" and "data-visualization-tool")
-4. Focus on FUNCTIONAL CATEGORIES that help users find similar items
-5. Use established, consistent terminology
+1. Tags must be EXACTLY 2 words connected with hyphen (e.g., "web-development", "data-science")
+2. DO NOT use the item name "${itemName}" as a tag
+3. DO NOT use generic single words like "tool", "utility", "helper", "code", "file"
+4. Focus on HIGH-LEVEL categories that group similar items
+5. Prefer broader categories over narrow specifics
 
-Focus on creating meaningful, searchable tags that describe:
-- Primary function (e.g., "data-analysis", "code-review", "search-optimization")  
-- Technology domain (e.g., "typescript", "react", "python", "machine-learning")
-- Use case category (e.g., "backend-development", "frontend-development", "research")
-- Specialization area (e.g., "api-design", "security-audit", "performance-optimization")
+Tag categories (use 2-word combinations):
+- Development domains: "web-development", "mobile-development", "data-science", "machine-learning"
+- Technology stacks: "frontend-development", "backend-development", "full-stack", "devops-automation"
+- Specializations: "api-design", "database-design", "security-audit", "performance-optimization"
+- Content types: "prompt-template", "ai-agent", "code-review", "system-config"
 
 Content to analyze:
 ${content}
@@ -274,10 +280,10 @@ ${content}
       )}\n\n`
     }
 
-    prompt += `IMPORTANT: Return ONLY a JSON array of specific, descriptive category names. Do not include any explanations or reasoning.
+    prompt += `IMPORTANT: Return ONLY a JSON array of exactly 2-word category names. Do not include any explanations or reasoning.
 
-Examples of good tags: ["claude-subagent", "backend-specialist", "typescript-expert", "api-design", "development-tool"]
-Examples of poor tags: ["ai", "code", "file", "text", "document"]
+Examples of good tags: ["web-development", "ai-agent", "api-design", "claude-config", "prompt-template"]
+Examples of poor tags: ["ai", "code", "file", "text", "document", "web-development-framework", "ai-agent-specialist"]
 
 Your response must be ONLY the JSON array, starting with [ and ending with ]. No other text.`
     return prompt
@@ -351,12 +357,18 @@ Your response must be ONLY the JSON array, starting with [ and ending with ]. No
       tags.add("react")
     }
     
-    // Specific AI/Agent categories
-    if (lowerContent.includes("subagent") || lowerContent.includes("claude")) {
-      tags.add("claude-subagent")
+    // Specific AI/Agent categories and Claude Code detection
+    if (lowerContent.includes("claude code") || itemName.includes("claude")) {
+      tags.add("claude-config")
+    }
+    if (lowerContent.includes("subagent") || (lowerContent.includes("claude") && lowerContent.includes("agent"))) {
+      tags.add("ai-agent")
     }
     if (lowerContent.includes("agent") && !lowerContent.includes("subagent")) {
       tags.add("ai-agent")
+    }
+    if (lowerContent.includes("hook") || lowerContent.includes("automation")) {
+      tags.add("workflow-automation")
     }
     
     // Specialization areas

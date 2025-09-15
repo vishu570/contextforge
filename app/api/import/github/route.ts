@@ -180,6 +180,98 @@ function extractBasicTags(content: string, filename: string): string[] {
   return Array.from(tags).slice(0, 6) // Return up to 6 tags
 }
 
+// Helper function to generate intelligent names for generic filenames
+function generateIntelligentName(filename: string, content: string, filePath: string = '', repoName: string = ''): string {
+  const lowerContent = content.toLowerCase();
+  const lowerFilename = filename.toLowerCase();
+  const pathParts = filePath.toLowerCase().split('/');
+
+  // Extract file extension
+  const lastDot = filename.lastIndexOf('.');
+  const extension = lastDot > 0 ? filename.substring(lastDot) : '';
+  const baseFilename = lastDot > 0 ? filename.substring(0, lastDot) : filename;
+
+  // Skip renaming if filename is already descriptive (more than 8 chars or contains hyphens/underscores)
+  if (baseFilename.length > 8 || baseFilename.includes('-') || baseFilename.includes('_')) {
+    return filename;
+  }
+
+  // Generic filename patterns that need better names
+  const genericPatterns = {
+    'hooks': () => {
+      if (lowerContent.includes('pre-commit') || lowerContent.includes('git hook')) {
+        return `git-hooks${extension}`;
+      }
+      if (lowerContent.includes('react') || lowerContent.includes('useeffect')) {
+        return `react-hooks${extension}`;
+      }
+      if (lowerContent.includes('workflow') || lowerContent.includes('automation')) {
+        return `workflow-hooks${extension}`;
+      }
+      return `${repoName}-hooks${extension}`;
+    },
+    'config': () => {
+      if (lowerContent.includes('claude') || lowerContent.includes('anthropic')) {
+        return `claude-config${extension}`;
+      }
+      if (lowerContent.includes('eslint') || lowerContent.includes('prettier')) {
+        return `lint-config${extension}`;
+      }
+      if (lowerContent.includes('webpack') || lowerContent.includes('vite')) {
+        return `build-config${extension}`;
+      }
+      return `${repoName}-config${extension}`;
+    },
+    'main': () => {
+      if (pathParts.includes('prompt') || lowerContent.includes('system prompt')) {
+        return `main-prompt${extension}`;
+      }
+      if (lowerContent.includes('agent') || lowerContent.includes('assistant')) {
+        return `main-agent${extension}`;
+      }
+      return `${repoName}-main${extension}`;
+    },
+    'index': () => {
+      if (pathParts.includes('prompt')) {
+        return `prompt-index${extension}`;
+      }
+      if (pathParts.includes('agent')) {
+        return `agent-index${extension}`;
+      }
+      return `${repoName}-index${extension}`;
+    },
+    'readme': () => {
+      // Handle README files more contextually
+      if (pathParts.length > 1) {
+        const parentDir = pathParts[pathParts.length - 2];
+        return `${parentDir}-readme${extension}`;
+      }
+      return `${repoName}-readme${extension}`;
+    }
+  };
+
+  // Check if filename matches a generic pattern
+  for (const [pattern, generator] of Object.entries(genericPatterns)) {
+    if (lowerFilename.includes(pattern)) {
+      return generator();
+    }
+  }
+
+  // If still generic, try content-based naming
+  if (lowerContent.includes('claude code') || lowerContent.includes('anthropic')) {
+    return `claude-${baseFilename}${extension}`;
+  }
+  if (lowerContent.includes('prompt') && lowerContent.includes('system')) {
+    return `system-${baseFilename}${extension}`;
+  }
+  if (lowerContent.includes('agent') || lowerContent.includes('subagent')) {
+    return `ai-${baseFilename}${extension}`;
+  }
+
+  // Default: prefix with repo name for context
+  return repoName ? `${repoName}-${filename}` : filename;
+}
+
 // Request validation schema with backward compatibility
 const githubImportRequestSchema = z.object({
   url: z.string().url("Invalid URL format"),
@@ -596,10 +688,13 @@ Context: This is from a GitHub repository import. The repository appears to be f
             suggestedTags = extractBasicTags(file.content, file.name)
           }
 
+          // Generate intelligent name suggestion for generic filenames
+          const suggestedName = generateIntelligentName(file.name, file.content, file.path, repoName);
+
           const stagedItem = await prisma.stagedItem.create({
             data: {
               importId: importRecord.id,
-              name: file.name,
+              name: suggestedName,
               originalPath: file.path,
               content: file.content,
               type: file.type as any,
@@ -608,6 +703,8 @@ Context: This is from a GitHub repository import. The repository appears to be f
               metadata: JSON.stringify({
                 downloadUrl: file.downloadUrl,
                 githubPath: file.path,
+                originalFilename: file.name, // Store original filename
+                suggestedFilename: suggestedName !== file.name ? suggestedName : null, // Only store if renamed
                 repository: `${repoOwner}/${repoName}`,
                 branch: validatedData.branch,
                 // Add AI classification and tagging results

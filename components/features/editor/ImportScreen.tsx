@@ -10,7 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, FileText, Github, Link2, Loader2, Upload, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function ImportScreen() {
     const router = useRouter();
@@ -112,11 +112,6 @@ export function ImportScreen() {
         currentFile: ''
     });
 
-    // Debug effect to log progress changes
-    useEffect(() => {
-        console.log('🎭 Progress state changed:', importProgress);
-        console.log('🎭 Progress value for component:', importProgress.progress);
-    }, [importProgress]);
 
     const handleGitHubImport = async () => {
         if (!githubUrl) {
@@ -129,6 +124,7 @@ export function ImportScreen() {
         setSuccess('');
         // Don't reset progress to 0 - let the backend drive the progress updates
         setImportProgress({ progress: 0, message: 'Connecting to GitHub...', totalFiles: 0, processedFiles: 0, currentFile: '' });
+
 
         try {
             const response = await fetch('/api/import/github', {
@@ -147,18 +143,16 @@ export function ImportScreen() {
                 }),
             });
 
+
             if (!response.ok) {
                 const errorResponseData = await response.json();
                 throw new Error(errorResponseData.error || errorResponseData.message || 'GitHub import failed');
             }
 
             const responseData = await response.json();
-            console.log('GitHub import response:', responseData);
-            console.log('Import ID from response:', responseData.importId);
 
             // Start listening to progress events
             if (responseData.importId) {
-                console.log(`Starting EventSource for importId: ${responseData.importId}`);
 
                 // Update UI immediately to show we have an import ID
                 setImportProgress(prev => ({
@@ -169,62 +163,44 @@ export function ImportScreen() {
 
                 // Wait a short moment to ensure the backend has started processing
                 setTimeout(() => {
-                    console.log(`Attempting to connect to SSE for ${responseData.importId}`);
-                    const eventSource = new EventSource(`/api/import/github/progress?importId=${responseData.importId}`);
-                    let retryCount = 0;
-                    const maxRetries = 3;
+                    const sseUrl = `/api/import/github/progress?importId=${responseData.importId}`;
+                    try {
+                        const eventSource = new EventSource(sseUrl);
+                        let retryCount = 0;
+                        const maxRetries = 3;
 
                     eventSource.onopen = () => {
-                        console.log('EventSource connection opened');
                         retryCount = 0; // Reset retry count on successful connection
                     };
 
                     eventSource.onmessage = (event) => {
-                        console.log('🔥 Raw SSE event received:', event);
-                        console.log('🔥 Event data:', event.data);
-                        console.log('🔥 Event type:', event.type);
 
                         // Skip heartbeat messages
                         if (event.data.trim() === '' || event.data.includes('heartbeat')) {
-                            console.log('⏭️ Skipping heartbeat message');
                             return;
                         }
 
                         try {
                             const progress = JSON.parse(event.data);
-                            console.log('🎯 Parsed progress data:', progress);
 
                             // Handle connection confirmation
                             if (progress.status === 'connected') {
-                                console.log('✅ SSE connection confirmed:', progress.message);
-                                setImportProgress(prev => {
-                                    const newState = {
-                                        ...prev,
-                                        progress: 10,
-                                        message: 'Connection established, starting import...'
-                                    };
-                                    console.log('🔄 Setting connection state:', newState);
-                                    return newState;
-                                });
+                                setImportProgress(prev => ({
+                                    ...prev,
+                                    progress: 10,
+                                    message: 'Connection established, starting import...'
+                                }));
                                 return;
                             }
 
-                            console.log('📈 Updating progress state with:', progress);
-                            setImportProgress(prev => {
-                                console.log('📊 Previous state:', prev);
-                                const newProgress = {
-                                    ...prev,
-                                    ...progress,
-                                    // Ensure we always show meaningful progress that moves forward
-                                    progress: Math.max(progress.progress || 0, prev.progress || 0)
-                                };
-                                console.log('✨ New progress state:', newProgress);
-                                console.log('🎪 Progress changed from', prev.progress, 'to', newProgress.progress);
-                                return newProgress;
-                            });
+                            setImportProgress(prev => ({
+                                ...prev,
+                                ...progress,
+                                // Ensure we always show meaningful progress that moves forward
+                                progress: Math.max(progress.progress || 0, prev.progress || 0)
+                            }));
 
                             if (progress.status === 'completed') {
-                                console.log('Import completed, closing EventSource');
                                 eventSource.close();
                                 setIsImporting(false);
 
@@ -240,7 +216,6 @@ export function ImportScreen() {
                                     router.push(`/dashboard/import/review?importId=${responseData.importId}`);
                                 }, 2000);
                             } else if (progress.status === 'failed') {
-                                console.log('Import failed, closing EventSource');
                                 eventSource.close();
                                 setIsImporting(false);
                                 setError(progress.message || 'Import failed');
@@ -281,6 +256,12 @@ export function ImportScreen() {
                             setError('Import timed out - please check the import history for results');
                         }
                     }, 5 * 60 * 1000); // 5 minute timeout
+
+                    } catch (sseError) {
+                        console.error('🚨 Failed to create EventSource:', sseError);
+                        setError(`Failed to establish progress connection: ${sseError.message}`);
+                        setIsImporting(false);
+                    }
                 }, 100); // Wait 100ms before starting EventSource
             } else {
                 // Fallback if no progress tracking
@@ -383,17 +364,10 @@ export function ImportScreen() {
                                         <p className="text-sm font-medium text-white">{importProgress.progress}%</p>
                                     </div>
                                 </div>
-                                <Progress 
-                                    value={importProgress.progress} 
-                                    className="w-full" 
-                                    key={`progress-${importProgress.progress}-${importProgress.processedFiles || 0}`}
+                                <Progress
+                                    value={importProgress.progress}
+                                    className="w-full"
                                 />
-                                {/* Debug info - remove after debugging */}
-                                <div className="text-xs text-gray-500 mt-1">
-                                    Debug: progress={importProgress.progress}, 
-                                    processed={importProgress.processedFiles}/{importProgress.totalFiles},
-                                    message="{importProgress.message}"
-                                </div>
                             </div>
                         </CardContent>
                     </Card>
