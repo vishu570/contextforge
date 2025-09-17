@@ -49,6 +49,17 @@ export async function GET(
     const stagedItems = stagedItemsRaw.map((item) => {
       const metadata = JSON.parse(item.metadata || "{}")
 
+      const suggestedPathFromMetadata =
+        metadata.suggestedPath ||
+        metadata.suggested_path ||
+        metadata.organization?.suggestedPath ||
+        metadata.classification?.suggestedPath ||
+        ''
+
+      const normalizedSuggestedPath = suggestedPathFromMetadata
+        ? `/${suggestedPathFromMetadata.replace(/^\/+/, '')}`
+        : ''
+
       return {
         id: item.id,
         name: item.name,
@@ -83,6 +94,8 @@ export async function GET(
           })) || [],
         // Add empty arrays for optional properties that the UI expects
         optimizations: [],
+        suggestedPath:
+          normalizedSuggestedPath || `/${item.type.toLowerCase()}s`,
       }
     })
 

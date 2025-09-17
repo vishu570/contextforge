@@ -45,9 +45,11 @@ export interface OptimizationOptions {
 }
 
 export interface CategorizationOptions {
+  model?: string
   maxSuggestions?: number
   confidence?: number
   existingCategories?: string[]
+  itemName?: string
 }
 
 export interface EmbeddingOptions {

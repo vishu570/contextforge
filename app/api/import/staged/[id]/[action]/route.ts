@@ -95,11 +95,6 @@ export async function POST(
                     userId: user.id,
                     name: tagName.trim(),
                     color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`, // Random color
-                    metadata: JSON.stringify({
-                      source: "ai_suggested",
-                      createdDuringImport: true,
-                      importId: stagedItem.importId,
-                    }),
                   },
                 })
               }
@@ -107,8 +102,11 @@ export async function POST(
               // Link the item to the category
               await prisma.itemCategory.create({
                 data: {
+                  userId: user.id,
                   itemId: newItem.id,
                   categoryId: category.id,
+                  source: "ai_suggested",
+                  confidence: 0.8,
                 },
               })
             } catch (error) {

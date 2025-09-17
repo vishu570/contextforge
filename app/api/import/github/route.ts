@@ -272,6 +272,409 @@ function generateIntelligentName(filename: string, content: string, filePath: st
   return repoName ? `${repoName}-${filename}` : filename;
 }
 
+function sanitizePathSegment(segment: string): string {
+  return segment
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+function normalizeOwnerSegment(owner: string): string {
+  const sanitized = sanitizePathSegment(owner)
+  const withoutTrailingDigits = sanitized.replace(/-?\d+$/, '')
+  return withoutTrailingDigits || sanitized || 'imports'
+}
+
+function deriveSuggestedPath(
+  filePath: string | undefined,
+  fileType: string | undefined,
+  repoOwner: string,
+  repoName: string
+): string {
+  const pathParts = (filePath || '')
+    .split('/')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  const hasDirectory = pathParts.length > 1
+  const topLevelSegment = hasDirectory && pathParts[0]
+    ? sanitizePathSegment(pathParts[0])
+    : ''
+  const ownerSegment = normalizeOwnerSegment(repoOwner)
+  const repoSegment = sanitizePathSegment(repoName)
+
+  let baseSegment = topLevelSegment
+  if (!baseSegment) {
+    if (fileType) {
+      baseSegment = sanitizePathSegment(`${fileType}s`)
+    }
+    if (!baseSegment) {
+      baseSegment = 'imports'
+    }
+  }
+
+  const segments = [baseSegment]
+  if (ownerSegment && ownerSegment !== baseSegment) {
+    segments.push(ownerSegment)
+  }
+
+  // Only include repo segment if it adds new information
+  if (repoSegment && repoSegment !== ownerSegment && baseSegment === 'imports') {
+    segments.push(repoSegment)
+  }
+
+  // Add additional subdirectories except the filename itself
+  if (pathParts.length > 1) {
+    const middleSegments = pathParts
+      .slice(1, pathParts.length - 1)
+      .map(sanitizePathSegment)
+      .filter(Boolean)
+    segments.push(...middleSegments)
+  }
+
+  return `/${segments.filter(Boolean).join('/')}`
+}
+
+interface ImportPipelineContext {
+  importRecord: { id: string };
+  validatedData: z.infer<typeof githubImportRequestSchema>;
+  repoOwner: string;
+  repoName: string;
+  user: { id: string };
+  githubProcessor: GitHubProcessor;
+  repoTracker: any;
+  sourceId: string;
+}
+
+async function runGithubImportPipeline({
+  importRecord,
+  validatedData,
+  repoOwner,
+  repoName,
+  user,
+  githubProcessor,
+  repoTracker,
+  sourceId,
+}: ImportPipelineContext) {
+  try {
+    const processingProgressCeiling = 85
+    let lastProcessingProgress = 10
+
+    const importResult = await githubProcessor.importRepository(
+      {
+        url: validatedData.url,
+        branch: validatedData.branch,
+        fileExtensions: validatedData.filters?.fileExtensions,
+        excludePaths: validatedData.filters?.excludePaths,
+        excludeDocFiles: validatedData.filters?.excludeDocFiles,
+      },
+      (progress) => {
+        const total = progress.total || 1
+        const ratio = Math.max(0, Math.min(1, progress.processed / total))
+        const scaled = 10 + Math.round(ratio * (processingProgressCeiling - 10))
+        const mappedProgress = Math.min(
+          processingProgressCeiling,
+          Math.max(lastProcessingProgress, scaled)
+        )
+        lastProcessingProgress = mappedProgress
+
+        updateProgress(importRecord.id, {
+          status: "processing",
+          progress: mappedProgress,
+          message: progress.message,
+          totalFiles: progress.total,
+          processedFiles: progress.processed,
+          currentFile: progress.currentFile,
+        });
+      }
+    );
+
+    console.log(`GitHub import result:`, {
+      total: importResult.total,
+      imported: importResult.imported,
+      failed: importResult.failed,
+      filesCount: importResult.files.length,
+    });
+
+    await prisma.import.update({
+      where: { id: importRecord.id },
+      data: {
+        status: "completed",
+        totalFiles: importResult.total,
+        processedFiles: importResult.imported,
+        failedFiles: importResult.failed,
+        metadata: JSON.stringify({
+          repoOwner,
+          repoName,
+          branch: validatedData.branch,
+          errors: importResult.errors,
+        }),
+        completedAt: new Date(),
+      },
+    });
+
+    updateProgress(importRecord.id, {
+      status: "processing",
+      progress: 90,
+      message: "Creating staged items for review...",
+      totalFiles: importResult.total,
+      processedFiles: importResult.imported,
+    });
+
+    const stagedItems: any[] = [];
+    const { createDuplicateDetector } = await import(
+      "@/lib/import/duplicate-detector"
+    );
+    const duplicateDetector = createDuplicateDetector(user.id);
+
+    const { aiClient } = await import("@/lib/ai/client");
+    let aiAvailable = false;
+    try {
+      await aiClient.initializeFromUser(user.id);
+      aiAvailable = aiClient.getAvailableProviders().length > 0;
+    } catch (error) {
+      console.warn(
+        "AI client initialization failed, will skip AI tagging:",
+        error
+      );
+    }
+
+    const existingCategories = aiAvailable
+      ? await prisma.category.findMany({
+          where: { userId: user.id },
+          select: { name: true },
+        })
+      : [];
+
+    for (let i = 0; i < importResult.files.length; i++) {
+      const file = importResult.files[i];
+      const pathParts = (file.path || '')
+        .split('/')
+        .map((part) => part.trim())
+        .filter(Boolean)
+      const suggestedPath = deriveSuggestedPath(
+        file.path,
+        file.type,
+        repoOwner,
+        repoName
+      );
+      try {
+        const duplicateMatches = await duplicateDetector.checkForDuplicates(
+          file.content,
+          file.name,
+          user.id,
+          {
+            threshold: 0.8,
+            enableSemanticCheck: true,
+            enableStructuralCheck: true,
+            enableExactCheck: true,
+            maxCandidates: 3,
+          }
+        );
+
+        const hasDuplicates = duplicateMatches.length > 0;
+        const highestSimilarity = hasDuplicates
+          ? Math.max(...duplicateMatches.map((m) => m.similarity))
+                : 0;
+
+        let suggestedTags: string[] = [];
+        let classificationMetadata: any = {
+          type: file.type,
+          confidence: 0.7,
+          source: "rule_based",
+        };
+
+        if (aiAvailable && validatedData.autoCategorie !== false) {
+          try {
+            const contextualizedContent = `
+Repository: ${repoOwner}/${repoName}
+File: ${file.name}
+Path: ${file.path || "N/A"}
+Type: ${file.type}
+
+Content:
+${file.content}
+
+Context: This is from a GitHub repository import. The repository appears to be focused on ${
+              repoName.includes("claude") ||
+              repoName.includes("subagent") ||
+              repoName.includes("agent")
+                ? "Claude AI subagents and development tools"
+                : repoName.includes("prompt")
+                ? "AI prompts and templates"
+                : repoName.includes("rule")
+                ? "coding rules and best practices"
+                : "development resources and tools"
+            }.`;
+
+            suggestedTags = await aiClient.categorize(contextualizedContent, {
+              maxSuggestions: 5,
+              existingCategories: existingCategories.map((c) => c.name),
+            });
+
+            classificationMetadata = {
+              type: file.type,
+              confidence: 0.85,
+              source: "ai_enhanced",
+              suggested_tags: suggestedTags,
+              ai_provider: aiClient.getAvailableProviders()[0],
+            };
+          } catch (aiError) {
+            console.warn(`AI tagging failed for ${file.name}:`, aiError);
+            suggestedTags = extractBasicTags(file.content, file.name);
+            classificationMetadata.source = "rule_based_fallback";
+          }
+        } else {
+          suggestedTags = extractBasicTags(file.content, file.name);
+        }
+
+        const directorySegments = pathParts.slice(0, Math.max(pathParts.length - 1, 0))
+
+        const pathDerivedTags = Array.from(
+          new Set(
+            [
+              ...suggestedTags,
+              ...directorySegments
+                .map(sanitizePathSegment)
+                .filter(Boolean)
+                .slice(0, 2),
+            ]
+          )
+        );
+
+        classificationMetadata = {
+          ...classificationMetadata,
+          suggested_tags: pathDerivedTags,
+        }
+
+        const suggestedName = generateIntelligentName(
+          file.name,
+          file.content,
+          file.path,
+          repoName
+        );
+
+        const stagedItem = await prisma.stagedItem.create({
+          data: {
+            importId: importRecord.id,
+            name: suggestedName,
+            originalPath: file.path,
+            content: file.content,
+            type: file.type as any,
+            format: `.${file.name.split(".").pop()}` || ".txt",
+            size: file.size,
+              metadata: JSON.stringify({
+                downloadUrl: file.downloadUrl,
+                githubPath: file.path,
+                originalFilename: file.name,
+                suggestedFilename:
+                  suggestedName !== file.name ? suggestedName : null,
+                repository: `${repoOwner}/${repoName}`,
+                branch: validatedData.branch,
+                classification: classificationMetadata,
+                suggestedPath,
+                suggested_tags: pathDerivedTags,
+                duplicates: {
+                  detected: hasDuplicates,
+                  count: duplicateMatches.length,
+                  highest_similarity: highestSimilarity,
+                  matches: duplicateMatches.map((match) => ({
+                  item_id: match.existingItemId,
+                  similarity: match.similarity,
+                  type: match.duplicateType,
+                  confidence: match.confidence,
+                  should_merge: match.shouldMerge,
+                  canonical_id: match.canonicalId,
+                })),
+              },
+            }),
+            status:
+              hasDuplicates && highestSimilarity > 0.95
+                ? "duplicate_detected"
+                : "pending",
+          },
+        });
+          stagedItems.push(stagedItem);
+
+          if (i % 5 === 0 || i === importResult.files.length - 1) {
+            const stagingProgress =
+              90 + Math.round((i / importResult.files.length) * 10);
+          const message = aiAvailable
+            ? `AI tagging and staging... (${i + 1}/${
+                importResult.files.length
+              })`
+            : `Staging items for review... (${i + 1}/${
+                importResult.files.length
+              })`;
+          updateProgress(importRecord.id, {
+            progress: stagingProgress,
+            message,
+            currentFile: file.name,
+          });
+        }
+      } catch (error) {
+        console.error(`Failed to create staged item for ${file.name}:`, error);
+      }
+    }
+
+    console.log(`Created ${stagedItems.length} staged items for review`);
+
+    const currentCommitSha = await repoTracker.getCurrentCommitSha(
+      repoOwner,
+      repoName,
+      validatedData.branch || "main"
+    );
+
+    await repoTracker.updateRepositoryState(
+      sourceId,
+      currentCommitSha,
+      stagedItems.length
+    );
+
+    updateProgress(importRecord.id, {
+      status: "completed",
+      progress: 100,
+      message: `Import completed! ${stagedItems.length} items ready for review`,
+      totalFiles: importResult.total,
+      processedFiles: importResult.imported,
+    });
+
+    console.log(`GitHub import completed for importId: ${importRecord.id}`);
+  } catch (githubError) {
+    console.error("GitHub import error:", githubError);
+
+    const errorMessage =
+      githubError instanceof Error
+        ? githubError.message
+        : "Failed to import from GitHub";
+
+    updateProgress(importRecord.id, {
+      status: "failed",
+      progress: 0,
+      message: `Import failed: ${errorMessage}`,
+      errors: [errorMessage],
+    });
+
+    await prisma.import.update({
+      where: { id: importRecord.id },
+      data: {
+        status: "failed",
+        errorLog: errorMessage,
+        completedAt: new Date(),
+        metadata: JSON.stringify({
+          repoOwner,
+          repoName,
+          branch: validatedData.branch,
+          error: errorMessage,
+        }),
+      },
+    });
+
+    throw githubError;
+  }
+}
+
 // Request validation schema with backward compatibility
 const githubImportRequestSchema = z.object({
   url: z.string().url("Invalid URL format"),
@@ -414,8 +817,7 @@ export async function POST(request: NextRequest) {
     let importRecord: any = null
     let source: any = null
 
-    try {
-      // Get or create repository tracking record
+    // Get or create repository tracking record
       const trackingInfo = await repoTracker.getOrCreateRepositoryTracker(
         repoOwner,
         repoName,
@@ -526,374 +928,49 @@ export async function POST(request: NextRequest) {
         excludePaths: validatedData.filters?.excludePaths,
       })
 
-      const importResult = await githubProcessor.importRepository(
-        {
-          url: validatedData.url,
-          branch: validatedData.branch,
-          fileExtensions: validatedData.filters?.fileExtensions,
-          excludePaths: validatedData.filters?.excludePaths,
-          excludeDocFiles: validatedData.filters?.excludeDocFiles,
-        },
-        (progress) => {
-          // Progress callback from GitHubProcessor
-          updateProgress(importRecord.id, {
-            status: "processing",
-            progress: Math.round((progress.processed / progress.total) * 100),
-            message: progress.message,
-            totalFiles: progress.total,
-            processedFiles: progress.processed,
-            currentFile: progress.currentFile,
-          })
-        }
-      )
-
-      console.log(`GitHub import result:`, {
-        total: importResult.total,
-        imported: importResult.imported,
-        failed: importResult.failed,
-        filesCount: importResult.files.length,
-      })
-
-      // Update import record with final results
-      await prisma.import.update({
-        where: { id: importRecord.id },
-        data: {
-          status: "completed",
-          totalFiles: importResult.total,
-          processedFiles: importResult.imported,
-          failedFiles: importResult.failed,
-          metadata: JSON.stringify({
-            repoOwner,
-            repoName,
-            branch: validatedData.branch,
-            errors: importResult.errors,
-          }),
-          completedAt: new Date(),
-        },
-      })
-
-      // Update progress for staging phase
+    runGithubImportPipeline({
+      importRecord,
+      validatedData,
+      repoOwner,
+      repoName,
+      user,
+      githubProcessor,
+      repoTracker,
+      sourceId: source.id,
+    }).catch((error) => {
+      console.error("Unhandled GitHub import processing error:", error)
       updateProgress(importRecord.id, {
-        status: "processing",
-        progress: 90,
-        message: "Creating staged items for review...",
-        totalFiles: importResult.total,
-        processedFiles: importResult.imported,
+        status: "failed",
+        progress: 0,
+        message: "Import failed due to an unexpected error",
+        errors: [
+          error instanceof Error ? error.message : "Unexpected import error",
+        ],
       })
-
-      // Create staged items for review with duplicate detection
-      const stagedItems = []
-      const { createDuplicateDetector } = await import(
-        "@/lib/import/duplicate-detector"
-      )
-      const duplicateDetector = createDuplicateDetector(user.id)
-
-      // Import AI client for intelligent categorization and tagging
-      const { aiClient } = await import("@/lib/ai/client")
-      let aiAvailable = false
-      try {
-        await aiClient.initializeFromUser(user.id)
-        aiAvailable = aiClient.getAvailableProviders().length > 0
-      } catch (error) {
-        console.warn(
-          "AI client initialization failed, will skip AI tagging:",
-          error
-        )
-      }
-
-      // Get existing categories to provide context for AI
-      const existingCategories = aiAvailable
-        ? await prisma.category.findMany({
-            where: { userId: user.id },
-            select: { name: true },
-          })
-        : []
-
-      for (let i = 0; i < importResult.files.length; i++) {
-        const file = importResult.files[i]
-        try {
-          // Check for duplicates before creating staged item
-          const duplicateMatches = await duplicateDetector.checkForDuplicates(
-            file.content,
-            file.name,
-            user.id,
-            {
-              threshold: 0.8, // 80% similarity threshold
-              enableSemanticCheck: true,
-              enableStructuralCheck: true,
-              enableExactCheck: true,
-              maxCandidates: 3,
-            }
-          )
-
-          const hasDuplicates = duplicateMatches.length > 0
-          const highestSimilarity = hasDuplicates
-            ? Math.max(...duplicateMatches.map((m) => m.similarity))
-            : 0
-
-          // Generate AI tags and classification if AI is available
-          let suggestedTags: string[] = []
-          let classificationMetadata: any = {
-            type: file.type,
-            confidence: 0.7,
-            source: "rule_based",
-          }
-
-          if (aiAvailable && validatedData.autoCategorie !== false) {
-            try {
-              // Provide context for better AI categorization
-              const contextualizedContent = `
-Repository: ${repoOwner}/${repoName}
-File: ${file.name}
-Path: ${file.path || "N/A"}
-Type: ${file.type}
-
-Content:
-${file.content}
-
-Context: This is from a GitHub repository import. The repository appears to be focused on ${
-                repoName.includes("claude") ||
-                repoName.includes("subagent") ||
-                repoName.includes("agent")
-                  ? "Claude AI subagents and development tools"
-                  : repoName.includes("prompt")
-                  ? "AI prompts and templates"
-                  : repoName.includes("rule")
-                  ? "coding rules and best practices"
-                  : "development resources and tools"
-              }.`
-
-              // Get AI-suggested tags with enhanced context
-              suggestedTags = await aiClient.categorize(contextualizedContent, {
-                maxSuggestions: 5,
-                existingCategories: existingCategories.map((c) => c.name),
-              })
-
-              // Enhanced classification with AI
-              classificationMetadata = {
-                type: file.type,
-                confidence: 0.85,
-                source: "ai_enhanced",
-                suggested_tags: suggestedTags,
-                ai_provider: aiClient.getAvailableProviders()[0],
-              }
-            } catch (aiError) {
-              console.warn(`AI tagging failed for ${file.name}:`, aiError)
-              // Fallback to rule-based tagging
-              suggestedTags = extractBasicTags(file.content, file.name)
-              classificationMetadata.source = "rule_based_fallback"
-            }
-          } else {
-            // Rule-based tag extraction as fallback
-            suggestedTags = extractBasicTags(file.content, file.name)
-          }
-
-          // Generate intelligent name suggestion for generic filenames
-          const suggestedName = generateIntelligentName(file.name, file.content, file.path, repoName);
-
-          const stagedItem = await prisma.stagedItem.create({
-            data: {
-              importId: importRecord.id,
-              name: suggestedName,
-              originalPath: file.path,
-              content: file.content,
-              type: file.type as any,
-              format: `.${file.name.split(".").pop()}` || ".txt",
-              size: file.size,
-              metadata: JSON.stringify({
-                downloadUrl: file.downloadUrl,
-                githubPath: file.path,
-                originalFilename: file.name, // Store original filename
-                suggestedFilename: suggestedName !== file.name ? suggestedName : null, // Only store if renamed
-                repository: `${repoOwner}/${repoName}`,
-                branch: validatedData.branch,
-                // Add AI classification and tagging results
-                classification: classificationMetadata,
-                suggested_tags: suggestedTags,
-                // Add duplicate detection results
-                duplicates: {
-                  detected: hasDuplicates,
-                  count: duplicateMatches.length,
-                  highest_similarity: highestSimilarity,
-                  matches: duplicateMatches.map((match) => ({
-                    item_id: match.existingItemId,
-                    similarity: match.similarity,
-                    type: match.duplicateType,
-                    confidence: match.confidence,
-                    should_merge: match.shouldMerge,
-                    canonical_id: match.canonicalId,
-                  })),
-                },
-              }),
-              status:
-                hasDuplicates && highestSimilarity > 0.95
-                  ? "duplicate_detected"
-                  : "pending",
-            },
-          })
-          stagedItems.push(stagedItem)
-
-          // Update progress during staging and AI tagging
-          if (i % 5 === 0 || i === importResult.files.length - 1) {
-            const stagingProgress =
-              90 + Math.round((i / importResult.files.length) * 10)
-            const message = aiAvailable
-              ? `AI tagging and staging... (${i + 1}/${
-                  importResult.files.length
-                })`
-              : `Staging items for review... (${i + 1}/${
-                  importResult.files.length
-                })`
-            updateProgress(importRecord.id, {
-              progress: stagingProgress,
-              message,
-              currentFile: file.name,
-            })
-          }
-        } catch (error) {
-          console.error(`Failed to create staged item for ${file.name}:`, error)
-        }
-      }
-
-      console.log(`Created ${stagedItems.length} staged items for review`)
-
-      // Update repository tracking with current commit SHA
-      const currentCommitSha = await repoTracker.getCurrentCommitSha(
-        repoOwner,
-        repoName,
-        validatedData.branch || "main"
-      )
-
-      await repoTracker.updateRepositoryState(
-        source.id,
-        currentCommitSha,
-        stagedItems.length
-      )
-
-      // Final progress update
-      updateProgress(importRecord.id, {
-        status: "completed",
-        progress: 100,
-        message: `Import completed! ${stagedItems.length} items ready for review`,
-        totalFiles: importResult.total,
-        processedFiles: importResult.imported,
-      })
-
-      // Return immediate success response with details
-      console.log(`Returning import response with importId: ${importRecord.id}`)
-
-      return NextResponse.json({
-        importId: importRecord.id,
-        status: "completed",
-        total: importResult.total,
-        imported: importResult.imported,
-        failed: importResult.failed,
-        stagedItems: stagedItems.length,
-        errors:
-          importResult.errors.length > 0
-            ? importResult.errors.slice(0, 5)
-            : undefined,
-        repository: `${repoOwner}/${repoName}`,
-        branch: validatedData.branch,
-        lastCommitSha: currentCommitSha,
-        isTracked: true,
-      })
-    } catch (githubError) {
-      console.error("GitHub import error:", githubError)
-
-      const errorMessage =
-        githubError instanceof Error
-          ? githubError.message
-          : "Failed to import from GitHub"
-
-      // Update progress with error if we have an importRecord
-      if (importRecord) {
-        updateProgress(importRecord.id, {
-          status: "failed",
-          progress: 0,
-          message: `Import failed: ${errorMessage}`,
-          errors: [errorMessage],
-        })
-
-        // Update import record with failure
-        await prisma.import.update({
-          where: { id: importRecord.id },
-          data: {
-            status: "failed",
-            errorLog: errorMessage,
-            completedAt: new Date(),
-            metadata: JSON.stringify({
-              repoOwner,
-              repoName,
-              branch: validatedData.branch,
-              error: errorMessage,
-            }),
-          },
-        })
-
-        return NextResponse.json(
-          {
-            error: errorMessage,
-            importId: importRecord.id,
-          },
-          { status: 400 }
-        )
-      } else {
-        // Create failed import record for tracking if no importRecord exists
-        const failedImportRecord = await prisma.import.create({
-          data: {
-            userId: user.id,
-            sourceId: null,
-            status: "failed",
-            totalFiles: 0,
-            processedFiles: 0,
-            failedFiles: 0,
-            sourceType: "github_repo",
-            sourceUrl: validatedData.url,
-            errorLog: errorMessage,
-            importSettings: JSON.stringify({
-              filters: validatedData.filters,
-              autoCategorie: validatedData.autoCategorie,
-              collectionId: validatedData.collectionId,
-            }),
-            metadata: JSON.stringify({
-              repoOwner,
-              repoName,
-              error: errorMessage,
-            }),
-            completedAt: new Date(),
-          },
-        })
-
-        updateProgress(failedImportRecord.id, {
-          status: "failed",
-          progress: 0,
-          message: `Import failed: ${errorMessage}`,
-          errors: [errorMessage],
-        })
-
-        return NextResponse.json(
-          {
-            error: errorMessage,
-            importId: failedImportRecord.id,
-          },
-          { status: 400 }
-        )
-      }
-    }
-  } catch (error) {
-    console.error("Import API error:", error)
-
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Invalid request data", details: error.issues },
-        { status: 400 }
-      )
-    }
+    })
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Import failed" },
-      { status: 500 }
+      {
+        importId: importRecord.id,
+        status: "processing",
+        repository: `${repoOwner}/${repoName}`,
+        branch: validatedData.branch,
+      },
+      { status: 202 }
     )
-  }
+  } catch (error) {
+      console.error("Import API error:", error)
+
+      if (error instanceof z.ZodError) {
+        return NextResponse.json(
+          { error: "Invalid request data", details: error.issues },
+          { status: 400 }
+        )
+      }
+
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Import failed" },
+        { status: 500 }
+      )
+    }
 }

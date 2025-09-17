@@ -163,7 +163,8 @@ export class OpenAIProvider implements AIProvider {
         console.warn("Using basic rule-based categorization")
         return this.extractBasicFallbackTags(
           content,
-          options.maxSuggestions || 5
+          options.maxSuggestions || 5,
+          options.itemName
         )
       }
 
@@ -179,7 +180,8 @@ export class OpenAIProvider implements AIProvider {
         )
         return this.extractBasicFallbackTags(
           content,
-          options.maxSuggestions || 5
+          options.maxSuggestions || 5,
+          options.itemName
         )
       }
 
@@ -189,7 +191,11 @@ export class OpenAIProvider implements AIProvider {
 
       // Fallback to basic categorization instead of throwing
       console.warn("OpenAI categorization failed, falling back to basic tags")
-      return this.extractBasicFallbackTags(content, options.maxSuggestions || 5)
+      return this.extractBasicFallbackTags(
+        content,
+        options.maxSuggestions || 5,
+        options.itemName
+      )
     }
   }
 
@@ -312,8 +318,10 @@ Your response must be ONLY the JSON array, starting with [ and ending with ]. No
 
   private extractBasicFallbackTags(
     content: string,
-    maxSuggestions: number
+    maxSuggestions: number,
+    itemName: string = ''
   ): string[] {
+    const inferredItemName = itemName || this.extractItemName(content)
     const tags: Set<string> = new Set()
     const lowerContent = content.toLowerCase()
 
@@ -358,7 +366,7 @@ Your response must be ONLY the JSON array, starting with [ and ending with ]. No
     }
     
     // Specific AI/Agent categories and Claude Code detection
-    if (lowerContent.includes("claude code") || itemName.includes("claude")) {
+    if (lowerContent.includes("claude code") || inferredItemName.includes("claude")) {
       tags.add("claude-config")
     }
     if (lowerContent.includes("subagent") || (lowerContent.includes("claude") && lowerContent.includes("agent"))) {

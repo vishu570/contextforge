@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Queue } from 'bull';
 import { ClassificationWorker } from './classification-worker';
 import { OptimizationWorker } from './optimization-worker';

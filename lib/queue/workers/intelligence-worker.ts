@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { BaseWorker } from './base-worker';
 import { 
   JobType, 

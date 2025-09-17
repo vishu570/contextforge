@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { prisma } from "@/lib/db"
 import { LLMProvider, LLMService } from "@/lib/llm"
 

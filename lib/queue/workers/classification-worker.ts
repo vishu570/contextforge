@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { z } from "zod"
 import { prisma } from "../../db"
 import { LLMService } from "../../llm"

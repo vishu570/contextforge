@@ -40,6 +40,7 @@ export interface EditorActions {
   deleteFile: (fileId: string) => void;
   toggleSidebar: () => void;
   togglePreviewPanel: () => void;
+  toggleImport?: () => void;
 }
 
 export interface EditorLayoutProps {

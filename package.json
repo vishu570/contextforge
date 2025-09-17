@@ -16,7 +16,8 @@
     "server:start": "ts-node scripts/start-server.ts",
     "server:dev": "concurrently \"pnpm dev\" \"pnpm server:start\"",
     "queue:status": "ts-node scripts/queue-status.ts",
-    "queue:clear": "ts-node scripts/queue-clear.ts"
+    "queue:clear": "ts-node scripts/queue-clear.ts",
+    "tsc": "tsc -p tsconfig.typecheck.json"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.60.0",

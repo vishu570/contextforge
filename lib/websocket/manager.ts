@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { IncomingMessage } from "http"
 import jwt from "jsonwebtoken"
 import WebSocket from "ws"

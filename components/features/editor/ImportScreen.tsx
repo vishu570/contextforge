@@ -10,7 +10,16 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, FileText, Github, Link2, Loader2, Upload, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+
+interface ProgressLogEntry {
+    id: string;
+    message: string;
+    progress?: number;
+    currentFile?: string;
+    status?: string;
+    timestamp: number;
+}
 
 export function ImportScreen() {
     const router = useRouter();
@@ -18,6 +27,10 @@ export function ImportScreen() {
     const [isImporting, setIsImporting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    const eventSourceRef = useRef<EventSource | null>(null);
+    const [currentImportId, setCurrentImportId] = useState<string | null>(null);
+    const [progressLogs, setProgressLogs] = useState<ProgressLogEntry[]>([]);
 
     // File Upload State
     const [files, setFiles] = useState<File[]>([]);
@@ -112,6 +125,27 @@ export function ImportScreen() {
         currentFile: ''
     });
 
+    const appendProgressLog = useCallback((entry: Omit<ProgressLogEntry, 'id' | 'timestamp'>) => {
+        setProgressLogs(prev => {
+            const last = prev[prev.length - 1];
+            if (
+                last &&
+                last.message === entry.message &&
+                last.currentFile === entry.currentFile &&
+                last.status === entry.status
+            ) {
+                return prev;
+            }
+
+            const newEntry: ProgressLogEntry = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                timestamp: Date.now(),
+                ...entry
+            };
+            return [...prev, newEntry];
+        });
+    }, []);
+
 
     const handleGitHubImport = async () => {
         if (!githubUrl) {
@@ -122,7 +156,13 @@ export function ImportScreen() {
         setIsImporting(true);
         setError('');
         setSuccess('');
-        // Don't reset progress to 0 - let the backend drive the progress updates
+        // Reset any previous connections and logs
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+            eventSourceRef.current = null;
+        }
+        setCurrentImportId(null);
+        setProgressLogs([{ id: `${Date.now()}-initial`, message: 'Connecting to GitHub...', progress: 0, timestamp: Date.now(), status: 'connecting' }]);
         setImportProgress({ progress: 0, message: 'Connecting to GitHub...', totalFiles: 0, processedFiles: 0, currentFile: '' });
 
 
@@ -160,114 +200,14 @@ export function ImportScreen() {
                     progress: 5,
                     message: 'Initializing import process...'
                 }));
-
-                // Wait a short moment to ensure the backend has started processing
-                setTimeout(() => {
-                    const sseUrl = `/api/import/github/progress?importId=${responseData.importId}`;
-                    try {
-                        const eventSource = new EventSource(sseUrl);
-                        let retryCount = 0;
-                        const maxRetries = 3;
-
-                    eventSource.onopen = () => {
-                        retryCount = 0; // Reset retry count on successful connection
-                    };
-
-                    eventSource.onmessage = (event) => {
-
-                        // Skip heartbeat messages
-                        if (event.data.trim() === '' || event.data.includes('heartbeat')) {
-                            return;
-                        }
-
-                        try {
-                            const progress = JSON.parse(event.data);
-
-                            // Handle connection confirmation
-                            if (progress.status === 'connected') {
-                                setImportProgress(prev => ({
-                                    ...prev,
-                                    progress: 10,
-                                    message: 'Connection established, starting import...'
-                                }));
-                                return;
-                            }
-
-                            setImportProgress(prev => ({
-                                ...prev,
-                                ...progress,
-                                // Ensure we always show meaningful progress that moves forward
-                                progress: Math.max(progress.progress || 0, prev.progress || 0)
-                            }));
-
-                            if (progress.status === 'completed') {
-                                eventSource.close();
-                                setIsImporting(false);
-
-                                // Show success message
-                                let successMessage = `Successfully imported ${progress.processedFiles} items`;
-                                if (progress.totalFiles > 0) {
-                                    successMessage += ` from ${progress.totalFiles} files found`;
-                                }
-                                setSuccess(successMessage);
-                                setGithubUrl('');
-
-                                setTimeout(() => {
-                                    router.push(`/dashboard/import/review?importId=${responseData.importId}`);
-                                }, 2000);
-                            } else if (progress.status === 'failed') {
-                                eventSource.close();
-                                setIsImporting(false);
-                                setError(progress.message || 'Import failed');
-                            }
-                        } catch (parseError) {
-                            console.error('Error parsing progress data:', parseError, 'Raw data:', event.data);
-                        }
-                    };
-
-                    eventSource.onerror = (error) => {
-                        console.error('🚨 EventSource error:', error);
-                        console.error('🚨 EventSource readyState:', eventSource.readyState);
-                        console.error('🚨 EventSource url:', eventSource.url);
-                        console.error('🚨 Full error object:', JSON.stringify(error, null, 2));
-
-                        // EventSource states: 0 = CONNECTING, 1 = OPEN, 2 = CLOSED
-                        const stateNames = ['CONNECTING', 'OPEN', 'CLOSED'];
-                        console.log('🚨 EventSource state:', stateNames[eventSource.readyState] || 'UNKNOWN');
-
-                        retryCount++;
-
-                        if (retryCount >= maxRetries) {
-                            eventSource.close();
-                            setIsImporting(false);
-                            setError(`Connection to import progress lost after multiple retries. State: ${stateNames[eventSource.readyState]}`);
-                        } else {
-                            console.log(`🔄 EventSource error, retry ${retryCount}/${maxRetries}`);
-                            // EventSource will automatically retry
-                        }
-                    };
-
-                    // Safety timeout to prevent infinite imports
-                    setTimeout(() => {
-                        if (eventSource.readyState !== EventSource.CLOSED) {
-                            console.warn('Import taking too long, closing EventSource');
-                            eventSource.close();
-                            setIsImporting(false);
-                            setError('Import timed out - please check the import history for results');
-                        }
-                    }, 5 * 60 * 1000); // 5 minute timeout
-
-                    } catch (sseError) {
-                        console.error('🚨 Failed to create EventSource:', sseError);
-                        setError(`Failed to establish progress connection: ${sseError.message}`);
-                        setIsImporting(false);
-                    }
-                }, 100); // Wait 100ms before starting EventSource
+                appendProgressLog({ message: 'Initializing import process...', progress: 5, status: 'starting' });
+                setCurrentImportId(responseData.importId);
             } else {
                 // Fallback if no progress tracking
                 setIsImporting(false);
                 setSuccess(`Import completed`);
                 setGithubUrl('');
+                appendProgressLog({ message: 'Import completed', progress: 100, status: 'completed' });
 
                 setTimeout(() => {
                     router.push(`/dashboard/import/review?importId=${responseData.importId}`);
@@ -275,9 +215,168 @@ export function ImportScreen() {
             }
         } catch (err) {
             setIsImporting(false);
-            setError(err instanceof Error ? err.message : 'GitHub import failed');
+            const message = err instanceof Error ? err.message : 'GitHub import failed';
+            setError(message);
+            appendProgressLog({ message, status: 'error' });
         }
     };
+
+    useEffect(() => {
+        if (!currentImportId || !isImporting) {
+            return () => {
+                if (eventSourceRef.current) {
+                    eventSourceRef.current.close();
+                    eventSourceRef.current = null;
+                }
+            };
+        }
+
+        const sseUrl = `/api/import/github/progress?importId=${currentImportId}`;
+        let retryCount = 0;
+        const maxRetries = 3;
+        let safetyTimeout: ReturnType<typeof setTimeout> | undefined;
+
+        try {
+            const eventSource = new EventSource(sseUrl, { withCredentials: true });
+            eventSourceRef.current = eventSource;
+
+            const scheduleSafetyTimeout = () => {
+                if (safetyTimeout) {
+                    clearTimeout(safetyTimeout);
+                }
+                safetyTimeout = setTimeout(() => {
+                    if (eventSource.readyState !== EventSource.CLOSED) {
+                        console.warn('Import taking too long, closing EventSource');
+                        appendProgressLog({ message: 'Import timed out - please check import history', status: 'timeout' });
+                        eventSource.close();
+                        eventSourceRef.current = null;
+                        setIsImporting(false);
+                        setError('Import timed out - please check the import history for results');
+                        setCurrentImportId(null);
+                    }
+                }, 5 * 60 * 1000);
+            };
+
+            scheduleSafetyTimeout();
+
+            eventSource.onopen = () => {
+                retryCount = 0;
+                scheduleSafetyTimeout();
+            };
+
+            eventSource.onmessage = (event) => {
+                // Skip heartbeat messages
+                if (event.data.trim() === '' || event.data.includes('heartbeat')) {
+                    return;
+                }
+
+                try {
+                    const progress = JSON.parse(event.data);
+
+                    if (progress.status === 'connected') {
+                        setImportProgress(prev => ({
+                            ...prev,
+                            progress: Math.max(prev.progress || 0, 10),
+                            message: 'Connection established, starting import...'
+                        }));
+                        appendProgressLog({
+                            message: 'Connection established, starting import...',
+                            progress: 10,
+                            status: 'connected'
+                        });
+                        return;
+                    }
+
+                    setImportProgress(prev => {
+                        const nextProgressValue = typeof progress.progress === 'number'
+                            ? Math.max(progress.progress, prev.progress || 0)
+                            : prev.progress;
+
+                        return {
+                            progress: nextProgressValue,
+                            message: progress.message ?? prev.message,
+                            totalFiles: typeof progress.totalFiles === 'number' ? progress.totalFiles : prev.totalFiles,
+                            processedFiles: typeof progress.processedFiles === 'number' ? progress.processedFiles : prev.processedFiles,
+                            currentFile: progress.currentFile ?? prev.currentFile ?? ''
+                        };
+                    });
+
+                    appendProgressLog({
+                        message: progress.message || 'Processing import...',
+                        progress: progress.progress,
+                        currentFile: progress.currentFile,
+                        status: progress.status
+                    });
+
+                    if (progress.status === 'completed') {
+                        appendProgressLog({
+                            message: progress.message || 'Import completed',
+                            progress: Math.max(progress.progress || 100, 100),
+                            status: 'completed'
+                        });
+                        eventSource.close();
+                        eventSourceRef.current = null;
+                        setIsImporting(false);
+
+                        let successMessage = `Successfully imported ${progress.processedFiles} items`;
+                        if (progress.totalFiles > 0) {
+                            successMessage += ` from ${progress.totalFiles} files found`;
+                        }
+                        setSuccess(successMessage);
+                        setGithubUrl('');
+                        setCurrentImportId(null);
+
+                        setTimeout(() => {
+                            router.push(`/dashboard/import/review?importId=${currentImportId}`);
+                        }, 2000);
+                    } else if (progress.status === 'failed') {
+                        appendProgressLog({
+                            message: progress.message || 'Import failed',
+                            status: 'failed'
+                        });
+                        eventSource.close();
+                        eventSourceRef.current = null;
+                        setIsImporting(false);
+                        setError(progress.message || 'Import failed');
+                        setCurrentImportId(null);
+                    }
+
+                    scheduleSafetyTimeout();
+                } catch (parseError) {
+                    console.error('Error parsing progress data:', parseError, 'Raw data:', event.data);
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('🚨 EventSource error:', error);
+                retryCount++;
+
+                if (retryCount >= maxRetries) {
+                    eventSource.close();
+                    eventSourceRef.current = null;
+                    appendProgressLog({ message: 'Connection to import progress lost', status: 'error' });
+                    setIsImporting(false);
+                    setError('Connection to import progress lost after multiple retries.');
+                    setCurrentImportId(null);
+                }
+            };
+        } catch (sseError) {
+            console.error('🚨 Failed to create EventSource:', sseError);
+            setError(`Failed to establish progress connection: ${sseError instanceof Error ? sseError.message : 'Unknown error'}`);
+            setIsImporting(false);
+            setCurrentImportId(null);
+        }
+
+        return () => {
+            if (safetyTimeout) {
+                clearTimeout(safetyTimeout);
+            }
+            if (eventSourceRef.current) {
+                eventSourceRef.current.close();
+                eventSourceRef.current = null;
+            }
+        };
+    }, [currentImportId, isImporting, appendProgressLog, router]);
 
     const handleUrlImport = async () => {
         if (!webUrl) {
@@ -368,6 +467,25 @@ export function ImportScreen() {
                                     value={importProgress.progress}
                                     className="w-full"
                                 />
+                                {progressLogs.length > 0 && (
+                                    <div className="max-h-48 overflow-y-auto rounded-md border border-gray-700/60 bg-[#0B0E14] p-3 text-xs text-gray-300">
+                                        {progressLogs.map(log => (
+                                            <div key={log.id} className="pb-2 last:pb-0 last:border-b-0 border-b border-gray-800/60">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <span className="font-medium text-white/90">{log.message}</span>
+                                                    {typeof log.progress === 'number' && (
+                                                        <span className="text-white/60">{Math.round(log.progress)}%</span>
+                                                    )}
+                                                </div>
+                                                {log.currentFile && (
+                                                    <p className="mt-1 text-[11px] text-gray-500">
+                                                        {log.currentFile}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

@@ -32,6 +32,7 @@ export interface EditorActions {
   saveTab: (tabId: string) => void;
   saveAllTabs: () => void;
   createNewTab: (type: string) => void;
+  toggleImport?: () => void;
 }
 
 export interface EditorLayoutProps {
