@@ -259,12 +259,14 @@ lsof -ti:3000 | xargs kill -9
 - Prompt detail page could be more intuitive
 - Some AI features require additional configuration
 
-### 📚 Additional Documentation
+### 📚 Documentation
 
-- **API Documentation**: `/docs/api/openapi.yaml`
-- **Architecture Guide**: `/docs/SYSTEM_ARCHITECTURE_DIAGRAM.md`
-- **Development Guide**: `/docs/DEVELOPER_TOOLS.md`
-- **Testing Guide**: `/docs/TESTING.md`
+- **Docs Index**: `/docs/README.md`
+- **Repository Guidelines**: `/AGENTS.md`
+- **Architecture Overview**: `/docs/architecture/overview.md`
+- **Development Guide**: `/docs/guides/development.md`
+- **Testing Playbook**: `/docs/guides/testing.md`
+- **API Specification**: `/docs/api/openapi.yaml`
 
 ### 🤝 Contributing
 
@@ -281,9 +283,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ### 🆘 Support
 
-- **Issues**: <https://github.com/yourusername/contextforge/issues>
-- **Discussions**: <https://github.com/yourusername/contextforge/discussions>
-- **Documentation**: <https://contextforge.docs.com>
+- **Issues**: <https://github.com/mgunnin/contextforge/issues>
+- **Discussions**: <https://github.com/mgunnin/contextforge/discussions>
 
 ---
 

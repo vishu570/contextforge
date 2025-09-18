@@ -36,7 +36,7 @@ import {
   Webhook,
   Zap
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MonacoEditor } from './MonacoEditor';
 
 interface ComprehensiveEditorProps {
@@ -81,7 +81,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
     author: 'Admin User',
     language: 'en',
     targetModels: ['gpt-4', 'claude-3', 'gemini-pro'],
-    tags: [],
+    tags: tab.tags || [],
     version: '1.0.0',
     format: tab.format,
     automationLevel: 'auto-suggest',
@@ -124,6 +124,15 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
   const [selectedLLM, setSelectedLLM] = useState<'openai' | 'claude' | 'gemini'>('openai');
   const [newTag, setNewTag] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Update metadata when tab changes
+  useEffect(() => {
+    setMetadata(prev => ({
+      ...prev,
+      tags: tab.tags || [],
+      format: tab.format,
+    }));
+  }, [tab.tags, tab.format]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {

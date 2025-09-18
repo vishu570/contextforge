@@ -4,6 +4,8 @@ export interface EditorTab {
   type: 'prompt' | 'agent' | 'rule' | 'template' | 'snippet' | 'other';
   content: string;
   format: string;
+  tags?: string[];
+  metadata?: any;
   unsaved?: boolean;
   lastModified?: Date;
 }
@@ -16,6 +18,8 @@ export interface FileTreeItem {
   content: string;
   updatedAt: Date;
   tags?: string[];
+  folderPath?: string;
+  metadata?: any;
   isFolder?: boolean;
   children?: FileTreeItem[];
   expanded?: boolean;

@@ -92,7 +92,7 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'updated' | 'type'>('updated');
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['prompts', 'agents', 'rules', 'templates']));
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['categories/01-core-development', 'categories/02-infrastructure-devops', 'categories/03-testing-qa', 'categories/04-frontend-ui', 'categories/05-data-ai', 'categories/06-developer-experience', 'categories/07-specialized-domains', 'categories/08-business-product', 'categories/09-meta-orchestration', 'categories/10-research-analysis']));
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   // Sort items based on sort preference
@@ -111,9 +111,9 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
     });
   };
 
-  // Group items by type for folder-like organization
+  // Group items by folder path for proper folder organization
   const groupedItems = items.reduce((acc, item) => {
-    const key = `${item.type}s`; // Convert 'prompt' to 'prompts'
+    const key = item.folderPath || 'uncategorized';
     if (!acc[key]) {
       acc[key] = [];
     }

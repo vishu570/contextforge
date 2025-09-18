@@ -3,14 +3,17 @@
 import { useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
-const MonacoEditorComponent = dynamic(() => import('@monaco-editor/react'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-full w-full bg-[#0F1117] flex items-center justify-center">
-      <div className="text-gray-400">Loading editor...</div>
-    </div>
-  ),
-});
+const MonacoEditorComponent = dynamic(
+  () => import('@monaco-editor/react').then(module => ({ default: module.default })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full w-full bg-[#0F1117] flex items-center justify-center">
+        <div className="text-gray-400">Loading editor...</div>
+      </div>
+    ),
+  }
+);
 
 interface MonacoEditorProps {
   value: string;

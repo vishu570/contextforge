@@ -73,15 +73,35 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
 
   // Transform database items to file tree structure
   const transformItemsToTree = (items: any[]): FileTreeItem[] => {
-    return items.map(item => ({
-      id: item.id,
-      name: item.name || item.title || 'Untitled',
-      type: item.type as any,
-      format: item.format || '.txt',
-      content: item.content || '',
-      updatedAt: new Date(item.updatedAt),
-      tags: item.tags?.map((t: any) => t.tag?.name || t.name) || [],
-    }));
+    return items.map(item => {
+      let folderPath = '';
+
+      // Extract folder path from metadata if available
+      try {
+        const metadata = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+        if (metadata?.originalPath) {
+          // Extract directory path from originalPath (e.g., "categories/01-core-development/api-designer.md" -> "categories/01-core-development")
+          const pathParts = metadata.originalPath.split('/');
+          if (pathParts.length > 1) {
+            folderPath = pathParts.slice(0, -1).join('/');
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to parse metadata for item:', item.name, error);
+      }
+
+      return {
+        id: item.id,
+        name: item.name || item.title || 'Untitled',
+        type: item.type as any,
+        format: item.format || '.txt',
+        content: item.content || '',
+        updatedAt: new Date(item.updatedAt),
+        tags: item.tags || [],
+        folderPath: folderPath || item.type, // fallback to type if no folder path
+        metadata: item.metadata,
+      };
+    });
   };
 
   // Editor actions
@@ -101,6 +121,8 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
           type: item.type,
           content: item.content,
           format: item.format,
+          tags: item.tags,
+          metadata: item.metadata,
           unsaved: false,
           lastModified: item.updatedAt,
         };
