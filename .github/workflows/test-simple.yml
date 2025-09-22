@@ -1,0 +1,124 @@
+name: Simple Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # Lint and type checking
+  lint:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm run lint
+
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit
+
+  # Unit tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit tests
+        run: pnpm run test:unit
+
+  # Build verification
+  build:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build application
+        run: pnpm run build
+
+      - name: Check build size
+        run: |
+          echo "Build size analysis:"
+          du -sh .next/
+          ls -la .next/static/chunks/ | head -10
+
+  # Test summary
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [lint, unit-tests, build]
+    if: always()
+    steps:
+      - name: Generate test summary
+        run: |
+          echo "# Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Lint: ${{ needs.lint.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Build: ${{ needs.build.result }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check test results
+        run: |
+          if [[ "${{ needs.lint.result }}" == "failure" ||
+                "${{ needs.unit-tests.result }}" == "failure" ||
+                "${{ needs.build.result }}" == "failure" ]]; then
+            echo "Critical tests failed"
+            exit 1
+          fi
+          echo "All tests passed!"

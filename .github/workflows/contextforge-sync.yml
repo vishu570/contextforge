@@ -88,11 +88,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: Install ContextForge CLI
-        run: |
-          npm install -g @contextforge/cli
+        run: pnpm add -g @contextforge/cli
           # Or use npx for latest version: npx @contextforge/cli@latest
 
       - name: Configure ContextForge CLI

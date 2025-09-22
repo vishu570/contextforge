@@ -47,10 +47,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'npm'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
 
       - name: Install ContextForge CLI
-        run: npm install -g @contextforge/cli
+        run: pnpm add -g @contextforge/cli
 
       - name: Configure ContextForge CLI
         run: |
@@ -180,40 +185,33 @@ jobs:
 
       - name: Create GitHub Release
         if: github.event.inputs.create_release == 'true'
-        uses: actions/create-release@v1
+        id: create_release
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: export-${{ env.TIMESTAMP }}
-          release_name: ContextForge Export ${{ env.TIMESTAMP }}
+          name: ContextForge Export ${{ env.TIMESTAMP }}
           body: |
             # ContextForge Export ${{ env.TIMESTAMP }}
-            
+
             Automated export of ContextForge contexts.
-            
+
             **Export Details:**
             - Format: ${{ github.event.inputs.export_format || 'files' }}
             - Metadata included: ${{ github.event.inputs.include_metadata || 'true' }}
             - Folder filter: ${{ github.event.inputs.folder_filter || 'All folders' }}
-            
+
             **Files:**
             - `contextforge_export_${{ env.TIMESTAMP }}.tar.gz` - Compressed archive
             - `contextforge_export_${{ env.TIMESTAMP }}.zip` - Zip archive
-            
+
             See the manifest file in the archive for detailed statistics and import instructions.
           draft: false
           prerelease: false
-
-      - name: Upload release assets
-        if: github.event.inputs.create_release == 'true'
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ${{ env.ARCHIVE_TAR }}
-          asset_name: contextforge_export_${{ env.TIMESTAMP }}.tar.gz
-          asset_content_type: application/gzip
+          files: |
+            ${{ env.ARCHIVE_TAR }}
+            ${{ env.ARCHIVE_ZIP }}
 
       - name: Generate summary
         if: always()
