@@ -67,9 +67,9 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
       roleBasedPrompting: true,
     },
   },
-  "openai-gpt4o": {
+  "openai-gpt5": {
     provider: "openai",
-    model: "gpt-4o",
+    model: "gpt-5-2025-08-07",
     maxTokens: 4096,
     inputCostPer1k: 0.005,
     outputCostPer1k: 0.015,
@@ -82,9 +82,9 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
       roleBasedPrompting: true,
     },
   },
-  "openai-gpt4o-mini": {
+  "openai-gpt5-mini": {
     provider: "openai",
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini-2025-08-07",
     maxTokens: 16384,
     inputCostPer1k: 0.00015,
     outputCostPer1k: 0.0006,
@@ -111,9 +111,9 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
       roleBasedPrompting: true,
     },
   },
-  "anthropic-claude3-sonnet": {
+  "anthropic-claude4-sonnet": {
     provider: "anthropic",
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-0",
     maxTokens: 4096,
     inputCostPer1k: 0.003,
     outputCostPer1k: 0.015,
@@ -125,9 +125,9 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
       roleBasedPrompting: true,
     },
   },
-  "anthropic-claude3-haiku": {
+  "anthropic-claude4-fast": {
     provider: "anthropic",
-    model: "claude-3-5-haiku-latest",
+    model: "claude-sonnet-4-0",
     maxTokens: 4096,
     inputCostPer1k: 0.00025,
     outputCostPer1k: 0.00125,
@@ -141,7 +141,7 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
   },
   "gemini-pro": {
     provider: "gemini",
-    model: "gemini-pro",
+    model: "gemini-2.5-pro",
     maxTokens: 8192,
     inputCostPer1k: 0.0005,
     outputCostPer1k: 0.0015,
@@ -153,9 +153,9 @@ export const MODEL_CONFIGS: Record<string, ModelConfig> = {
       roleBasedPrompting: false,
     },
   },
-  "gemini-pro-1.5": {
+  "gemini-flash": {
     provider: "gemini",
-    model: "gemini-1.5-pro",
+    model: "gemini-2.5-flash",
     maxTokens: 8192,
     inputCostPer1k: 0.0035,
     outputCostPer1k: 0.0105,
@@ -482,7 +482,7 @@ ${content}
 Provide the trimmed version that maintains quality while reducing token count:`
 
       const trimmedContent = await this.llmService.generateResponse(prompt, {
-        model: process.env.OPENAI_DEFAULT_MODEL || "gpt-4o-mini", // Use a cost-effective model for optimization
+        model: process.env.OPENAI_FAST_MODEL || "gpt-5-mini-2025-08-07", // Use a cost-effective model for optimization
         maxTokens: Math.min(maxTokens, 4000),
         temperature: 0.3,
       })
@@ -710,7 +710,7 @@ Provide the trimmed version that maintains quality while reducing token count:`
           reasoning += "High-quality model. "
         } else if (
           config.provider === "openai" &&
-          config.model.includes("gpt-4")
+          (config.model.includes("gpt-4") || config.model.includes("gpt-5"))
         ) {
           score += 0.35
           reasoning += "High-quality OpenAI model. "

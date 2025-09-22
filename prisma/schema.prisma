@@ -628,7 +628,7 @@ model OptimizationResult {
   optimizedVersion  String            // AI-optimized version
   confidence        Float             // AI confidence score 0.0-1.0
   aiProvider        String            // openai, anthropic, gemini
-  aiModel           String            // gpt-4, claude-3-sonnet, gemini-1.5-pro
+  aiModel           String            // gpt-5-2025-08-07, claude-sonnet-4-0, gemini-2.5-pro
   processingTime    Int?              // Time taken in milliseconds
   tokenUsage        String            @default("{}") // JSON: {"input": 100, "output": 50}
   costEstimate      Float?            // Estimated cost in USD

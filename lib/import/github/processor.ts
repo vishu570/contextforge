@@ -337,7 +337,12 @@ export class GitHubImportProcessor {
           aiError instanceof Error ? aiError.message : "Unknown error"
         )
         // Fallback to rule-based categorization
-        suggestedCategories = this.extractCategories(content)
+        const itemPath = await prisma.item.findUnique({
+          where: { id: itemId },
+          select: { sourceMetadata: true }
+        })
+        const metadata = itemPath?.sourceMetadata ? JSON.parse(itemPath.sourceMetadata) : {}
+        suggestedCategories = this.extractCategories(content, metadata.path)
         confidence = 0.6
         source = "imported"
         aiProvider = undefined
@@ -386,28 +391,80 @@ export class GitHubImportProcessor {
     }
   }
 
-  private extractCategories(content: string): string[] {
+  private extractCategories(content: string, filePath?: string): string[] {
     const categories: string[] = []
+    const lowerContent = content.toLowerCase()
+    const fileName = filePath ? this.extractFileName(filePath).toLowerCase() : ""
 
-    // Simple keyword-based categorization
-    const keywords = {
-      documentation: ["readme", "doc", "guide", "tutorial", "how to"],
-      configuration: ["config", "settings", ".env", "docker", "yaml", "json"],
-      code: ["function", "class", "import", "export", "const", "let", "var"],
-      test: ["test", "spec", "jest", "mocha", "cypress"],
-      api: ["endpoint", "route", "api", "rest", "graphql"],
-      database: ["schema", "migration", "query", "sql", "database"],
+    // Primary categorization by item type
+    const itemTypeKeywords = {
+      "Agents": [
+        "agent", "assistant", "bot", "persona", "character", "role", "system role",
+        "ai assistant", "chatbot", "backend-developer", "api-designer",
+        "fullstack-developer", "electron-pro", "frontend-developer"
+      ],
+      "Prompts": [
+        "prompt", "instruction", "system prompt", "user prompt", "template prompt",
+        "prompt template", "ask", "query", "question"
+      ],
+      "Rules": [
+        "rule", "guideline", "principle", "convention", "standard", "policy",
+        "constraint", "requirement", "specification", "criteria"
+      ],
+      "Hooks": [
+        "hook", "webhook", "pre-commit", "post-commit", "lifecycle",
+        "event handler", "trigger", "callback"
+      ],
+      "Commands": [
+        "command", "script", "bash", "shell", "cli", "terminal",
+        "executable", "run", "execute"
+      ],
+      "Templates": [
+        "template", "boilerplate", "starter", "scaffold", "skeleton",
+        "example", "sample", "demo"
+      ],
+      "Configurations": [
+        "config", "configuration", "settings", "options", "preferences",
+        ".env", "docker", "yaml", "json", "toml"
+      ]
     }
 
-    const lowerContent = content.toLowerCase()
+    // Check for item type based on content and filename
+    for (const [category, terms] of Object.entries(itemTypeKeywords)) {
+      const hasContentMatch = terms.some((term) => lowerContent.includes(term))
+      const hasFileMatch = fileName && terms.some((term) => fileName.includes(term))
 
-    for (const [category, terms] of Object.entries(keywords)) {
-      if (terms.some((term) => lowerContent.includes(term))) {
+      if (hasContentMatch || hasFileMatch) {
         categories.push(category)
       }
     }
 
-    return categories.slice(0, 3) // Limit to top 3 categories
+    // Secondary categorization by technical domain (only if no primary type found)
+    if (categories.length === 0) {
+      const domainKeywords = {
+        "Development Tools": ["vscode", "ide", "editor", "debug", "lint", "format"],
+        "Documentation": ["readme", "doc", "guide", "tutorial", "how to", "manual"],
+        "Testing": ["test", "spec", "jest", "mocha", "cypress", "unit test"],
+        "API & Backend": ["endpoint", "route", "api", "rest", "graphql", "server"],
+        "Database": ["schema", "migration", "query", "sql", "database", "orm"],
+        "Frontend": ["react", "vue", "angular", "component", "ui", "interface"],
+        "DevOps": ["docker", "kubernetes", "deploy", "ci/cd", "build", "pipeline"]
+      }
+
+      for (const [category, terms] of Object.entries(domainKeywords)) {
+        if (terms.some((term) => lowerContent.includes(term))) {
+          categories.push(category)
+          break // Only add one domain category
+        }
+      }
+    }
+
+    // Fallback to "Other" if no categories found
+    if (categories.length === 0) {
+      categories.push("Other")
+    }
+
+    return categories.slice(0, 2) // Limit to top 2 categories
   }
 
   private getFileType(filePath: string): string {
@@ -429,23 +486,71 @@ export class GitHubImportProcessor {
   }
 
   private determineItemType(filePath: string, parsedContent: any): string {
-    // Check for specific patterns in content to determine type
     const content = parsedContent.content || ""
     const lowerContent = content.toLowerCase()
+    const fileName = this.extractFileName(filePath).toLowerCase()
+    const fileExt = this.getFileExtension(filePath)
 
-    if (
-      lowerContent.includes("prompt") ||
-      lowerContent.includes("instruction")
-    ) {
-      return "prompt"
-    }
-
-    if (lowerContent.includes("agent") || lowerContent.includes("bot")) {
+    // Agent detection - highest priority for specific agent files
+    const agentKeywords = [
+      "agent", "assistant", "bot", "persona", "character", "role",
+      "backend-developer", "api-designer", "fullstack-developer",
+      "electron-pro", "frontend-developer", "system role"
+    ]
+    if (agentKeywords.some(keyword =>
+      lowerContent.includes(keyword) || fileName.includes(keyword)
+    )) {
       return "agent"
     }
 
-    if (filePath.includes("config") || filePath.includes("setting")) {
+    // Prompt detection
+    const promptKeywords = [
+      "prompt", "instruction", "system prompt", "user prompt",
+      "template prompt", "ask", "query"
+    ]
+    if (promptKeywords.some(keyword => lowerContent.includes(keyword))) {
+      return "prompt"
+    }
+
+    // Rule detection
+    const ruleKeywords = [
+      "rule", "guideline", "principle", "convention", "standard",
+      "policy", "constraint", "requirement", "specification"
+    ]
+    if (ruleKeywords.some(keyword => lowerContent.includes(keyword)) ||
+        fileName.includes("rule") || fileName.includes("config") ||
+        fileName.includes("setting")) {
       return "rule"
+    }
+
+    // Hook detection
+    const hookKeywords = [
+      "hook", "webhook", "pre-commit", "post-commit", "lifecycle",
+      "event handler", "trigger", "callback"
+    ]
+    if (hookKeywords.some(keyword =>
+      lowerContent.includes(keyword) || fileName.includes(keyword)
+    )) {
+      return "rule" // Hooks are categorized as rules in the schema
+    }
+
+    // Command detection
+    const commandKeywords = [
+      "command", "script", "bash", "shell", "cli", "terminal", "executable"
+    ]
+    if (commandKeywords.some(keyword => lowerContent.includes(keyword)) ||
+        [".sh", ".bat", ".cmd", ".ps1"].includes(fileExt)) {
+      return "snippet" // Commands are stored as snippets
+    }
+
+    // Template detection
+    const templateKeywords = [
+      "template", "boilerplate", "starter", "scaffold", "skeleton"
+    ]
+    if (templateKeywords.some(keyword =>
+      lowerContent.includes(keyword) || fileName.includes(keyword)
+    )) {
+      return "template"
     }
 
     // Default based on file extension

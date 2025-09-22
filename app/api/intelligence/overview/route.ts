@@ -55,14 +55,12 @@ export async function GET(request: NextRequest) {
       },
       capabilities: {
         supportedModels: [
-          'openai-gpt4',
-          'openai-gpt4o',
-          'openai-gpt4o-mini',
-          'anthropic-claude3-opus',
-          'anthropic-claude3-sonnet',
-          'anthropic-claude3-haiku',
+          'openai-gpt5',
+          'openai-gpt5-mini',
+          'anthropic-claude4-sonnet',
+          'anthropic-claude4-fast',
           'gemini-pro',
-          'gemini-pro-1.5',
+          'gemini-flash',
         ],
         embeddingProviders: [
           'openai-small',

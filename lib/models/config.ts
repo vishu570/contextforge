@@ -28,7 +28,7 @@ export const getModelConfigs = (): ModelConfig[] => {
       capabilities: ["creative", "problem-solving", "general"],
     },
     {
-      id: process.env.ANTHROPIC_FAST_MODEL || "claude-3-5-haiku-latest",
+      id: process.env.ANTHROPIC_FAST_MODEL || "claude-sonnet-4-0",
       name: "Claude 4 Haiku",
       provider: "anthropic",
       cost: parseFloat(process.env.CLAUDE_HAIKU_COST || "0.001"),

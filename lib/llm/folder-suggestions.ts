@@ -354,7 +354,7 @@ async function callLLM(prompt: string): Promise<string> {
       })
 
       const response = await anthropic.messages.create({
-        model: process.env.ANTHROPIC_DEFAULT_MODEL || "claude-3-5-haiku-latest",
+        model: process.env.ANTHROPIC_DEFAULT_MODEL || "claude-sonnet-4-0",
         max_tokens: 2000,
         messages: [{ role: "user", content: prompt }],
       })

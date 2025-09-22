@@ -244,7 +244,7 @@ export function ModelSettings({ userId }: ModelSettingsProps) {
             <div>ANTHROPIC_DEFAULT_MODEL=claude-sonnet-4-20250514</div>
             <div>OPENAI_DEFAULT_MODEL=gpt-5-mini-2025-08-07</div>
             <div>GOOGLE_DEFAULT_MODEL=gemini-2.0-flash</div>
-            <div>ANTHROPIC_FAST_MODEL=claude-3-5-haiku-latest</div>
+            <div>ANTHROPIC_FAST_MODEL=claude-sonnet-4-0</div>
           </div>
           <p className="text-sm text-muted-foreground mt-2">
             Restart the application after changing environment variables.

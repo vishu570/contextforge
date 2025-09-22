@@ -9,23 +9,29 @@ import {
   ProviderConfig,
   ProviderError,
 } from "./types"
+import { getModelSelection, getModelForTask, getMappedModel } from "../models"
 
 export class OpenAIProvider implements AIProvider {
   public readonly name = "openai"
-  public readonly models = [
-    "gpt-5-mini-2025-08-07",
-    "gpt-4o",
-    "gpt-4o-mini",
-    "text-embedding-3-small",
-    "text-embedding-3-large",
-  ]
 
-  // Default models for different tasks
-  public readonly defaultModels = {
-    chat: "gpt-4o-mini", // More stable for chat tasks
-    categorization: "gpt-4o-mini", // More reliable for categorization
-    optimization: "gpt-4o", // Better for optimization tasks
-    embedding: "text-embedding-3-small"
+  public get models(): string[] {
+    const modelSelection = getModelSelection()
+    return [
+      modelSelection.openai.default,
+      modelSelection.openai.fast,
+      "text-embedding-3-small",
+      "text-embedding-3-large",
+    ]
+  }
+
+  // Default models for different tasks - using environment variables
+  public get defaultModels() {
+    return {
+      chat: getModelForTask('chat'),
+      categorization: getModelForTask('categorization'),
+      optimization: getModelForTask('optimization'),
+      embedding: "text-embedding-3-small"
+    }
   }
 
   private client: OpenAI
@@ -50,7 +56,7 @@ export class OpenAIProvider implements AIProvider {
 
     try {
       const prompt = this.buildOptimizationPrompt(content, type, options)
-      const model = options.model || this.defaultModels.optimization
+      const model = getMappedModel(options.model || this.defaultModels.optimization)
 
       const completionOptions: any = {
         model,
@@ -113,7 +119,7 @@ export class OpenAIProvider implements AIProvider {
     try {
       const prompt = this.buildCategorizationPrompt(content, options)
 
-      const model = options.model || this.defaultModels.categorization
+      const model = getMappedModel(options.model || this.defaultModels.categorization)
       const completionOptions: any = {
         model,
         messages: [{ role: "user", content: prompt }],
@@ -140,7 +146,7 @@ export class OpenAIProvider implements AIProvider {
           console.log("Retrying categorization with GPT-4o fallback")
           try {
             const fallbackResponse = await this.client.chat.completions.create({
-              model: "gpt-4o-mini",
+              model: getMappedModel(this.defaultModels.categorization),
               messages: [{ role: "user", content: prompt }],
               max_completion_tokens: 200,
               temperature: 0.3,
@@ -442,13 +448,15 @@ Your response must be ONLY the JSON array, starting with [ and ending with ]. No
     if (!tokenUsage) return 0
 
     const pricing = {
-      "gpt-5-mini-2025-08-07": { input: 0.003 / 1000, output: 0.0075 / 1000 }, // Updated pricing for GPT-5 mini
+      "gpt-5-2025-08-07": { input: parseFloat(process.env.GPT_5_COST || "0.01") / 1000, output: parseFloat(process.env.GPT_5_COST || "0.01") / 1000 },
+      "gpt-5-mini-2025-08-07": { input: parseFloat(process.env.GPT_5_MINI_COST || "0.0015") / 1000, output: parseFloat(process.env.GPT_5_MINI_COST || "0.0015") / 1000 },
+      // Legacy model fallbacks (will be mapped to new models)
       "gpt-4o": { input: 0.0025 / 1000, output: 0.01 / 1000 },
       "gpt-4o-mini": { input: 0.00015 / 1000, output: 0.0006 / 1000 },
     }
 
     const rates =
-      pricing[model as keyof typeof pricing] || pricing["gpt-4o-mini"]
+      pricing[model as keyof typeof pricing] || pricing["gpt-5-mini-2025-08-07"]
     return tokenUsage.input * rates.input + tokenUsage.output * rates.output
   }
 }

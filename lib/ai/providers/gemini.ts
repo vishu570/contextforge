@@ -9,15 +9,19 @@ import {
   ProviderConfig,
   ProviderError,
 } from "./types"
+import { getModelSelection, getModelForTask, getMappedModel } from "../models"
 
 export class GeminiProvider implements AIProvider {
   public readonly name = "gemini"
-  public readonly models = [
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-pro",
-    "gemini-1.5-flash",
-    "text-embedding-004",
-  ]
+
+  public get models(): string[] {
+    const modelSelection = getModelSelection()
+    return [
+      modelSelection.google.default,
+      modelSelection.google.fast,
+      "text-embedding-004",
+    ]
+  }
 
   private client: GoogleGenerativeAI
   private config: ProviderConfig
@@ -36,7 +40,7 @@ export class GeminiProvider implements AIProvider {
 
     try {
       const prompt = this.buildOptimizationPrompt(content, type, options)
-      const model = options.model || "gemini-2.0-flash-exp"
+      const model = getMappedModel(options.model || getModelSelection().google.default)
 
       const genModel = this.client.getGenerativeModel({
         model,
@@ -95,7 +99,7 @@ export class GeminiProvider implements AIProvider {
       const prompt = this.buildCategorizationPrompt(content, options)
 
       const genModel = this.client.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: getMappedModel(options.model || getModelSelection().google.fast),
         generationConfig: {
           temperature: 0.3,
           maxOutputTokens: 200,
@@ -152,7 +156,7 @@ export class GeminiProvider implements AIProvider {
   async isHealthy(): Promise<boolean> {
     try {
       const genModel = this.client.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: getMappedModel(getModelSelection().google.fast),
       })
       await genModel.generateContent("Hello")
       return true
@@ -239,13 +243,22 @@ Respond with just the JSON array:`
     if (!tokenUsage) return 0
 
     const pricing = {
-      "gemini-2.0-flash-exp": { input: 0, output: 0 }, // Currently free in preview
+      "gemini-2.5-pro": {
+        input: parseFloat(process.env.GEMINI_2_5_PRO_COST || "0.0035") / 1000,
+        output: parseFloat(process.env.GEMINI_2_5_PRO_COST || "0.0035") / 1000
+      },
+      "gemini-2.5-flash": {
+        input: parseFloat(process.env.GEMINI_2_5_FLASH_COST || "0.0005") / 1000,
+        output: parseFloat(process.env.GEMINI_2_5_FLASH_COST || "0.0005") / 1000
+      },
+      // Legacy model fallbacks (will be mapped to new models)
+      "gemini-2.0-flash-exp": { input: 0, output: 0 },
       "gemini-1.5-pro": { input: 1.25 / 1000000, output: 5 / 1000000 },
       "gemini-1.5-flash": { input: 0.075 / 1000000, output: 0.3 / 1000000 },
     }
 
     const rates =
-      pricing[model as keyof typeof pricing] || pricing["gemini-2.0-flash-exp"]
+      pricing[model as keyof typeof pricing] || pricing["gemini-2.5-flash"]
     return tokenUsage.input * rates.input + tokenUsage.output * rates.output
   }
 }

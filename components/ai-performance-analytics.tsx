@@ -94,13 +94,11 @@ interface AIPerformanceAnalyticsProps {
 }
 
 const MODEL_COLORS = {
+  'gpt-5-2025-08-07': '#3b82f6',
   'gpt-5-mini-2025-08-07': '#10b981',
-  'gpt-4o': '#3b82f6',
-  'claude-sonnet-4-20250514': '#8b5cf6',
-  'claude-3-5-haiku-latest': '#a855f7',
-  'claude-opus-4-20250514': '#c084fc',
-  'gemini-2.0-flash': '#f59e0b',
-  'gemini-pro': '#fbbf24'
+  'claude-sonnet-4-0': '#8b5cf6',
+  'gemini-2.5-pro': '#fbbf24',
+  'gemini-2.5-flash': '#f59e0b'
 };
 
 const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];

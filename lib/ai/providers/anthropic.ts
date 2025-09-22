@@ -9,14 +9,18 @@ import {
   ProviderConfig,
   ProviderError,
 } from "./types"
+import { getModelSelection, getModelForTask, getMappedModel } from "../models"
 
 export class AnthropicProvider implements AIProvider {
   public readonly name = "anthropic"
-  public readonly models = [
-    "claude-sonnet-4-20250514",
-    "claude-3-5-sonnet-20241022",
-    "claude-3-5-haiku-20241022",
-  ]
+
+  public get models(): string[] {
+    const modelSelection = getModelSelection()
+    return [
+      modelSelection.anthropic.default,
+      modelSelection.anthropic.fast,
+    ]
+  }
 
   private client: Anthropic
   private config: ProviderConfig
@@ -39,7 +43,7 @@ export class AnthropicProvider implements AIProvider {
 
     try {
       const prompt = this.buildOptimizationPrompt(content, type, options)
-      const model = options.model || "claude-sonnet-4-20250514"
+      const model = getMappedModel(options.model || getModelSelection().anthropic.default)
 
       const response = await this.client.messages.create({
         model,
@@ -97,7 +101,7 @@ export class AnthropicProvider implements AIProvider {
       const prompt = this.buildCategorizationPrompt(content, options)
 
       const response = await this.client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: getMappedModel(options.model || getModelSelection().anthropic.default),
         max_tokens: 200,
         temperature: 0.3,
         messages: [{ role: "user", content: prompt }],
@@ -139,7 +143,7 @@ export class AnthropicProvider implements AIProvider {
     try {
       // Simple health check - try to create a minimal message
       await this.client.messages.create({
-        model: "claude-3-5-haiku-20241022",
+        model: getMappedModel(getModelSelection().anthropic.fast),
         max_tokens: 10,
         messages: [{ role: "user", content: "Hello" }],
       })
@@ -227,17 +231,19 @@ Respond with just the JSON array:`
     if (!tokenUsage) return 0
 
     const pricing = {
-      "claude-sonnet-4-20250514": { input: 15 / 1000000, output: 75 / 1000000 },
-      "claude-3-5-sonnet-20241022": {
-        input: 3 / 1000000,
-        output: 15 / 1000000,
+      "claude-sonnet-4-0": {
+        input: parseFloat(process.env.CLAUDE_SONNET_4_COST || "0.003") / 1000,
+        output: parseFloat(process.env.CLAUDE_SONNET_4_COST || "0.003") / 1000
       },
+      // Legacy model fallbacks (will be mapped to new models)
+      "claude-sonnet-4-20250514": { input: 15 / 1000000, output: 75 / 1000000 },
+      "claude-3-5-sonnet-20241022": { input: 3 / 1000000, output: 15 / 1000000 },
       "claude-3-5-haiku-20241022": { input: 1 / 1000000, output: 5 / 1000000 },
     }
 
     const rates =
       pricing[model as keyof typeof pricing] ||
-      pricing["claude-3-5-haiku-20241022"]
+      pricing["claude-sonnet-4-0"]
     return tokenUsage.input * rates.input + tokenUsage.output * rates.output
   }
 }

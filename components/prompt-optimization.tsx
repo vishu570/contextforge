@@ -142,11 +142,11 @@ const SUGGESTION_TYPES = [
 ];
 
 const AI_MODELS = [
-  { value: 'gpt-5-mini-2025-08-07', label: 'GPT-5', provider: 'OpenAI' },
-  { value: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
-  { value: 'claude-sonnet-4-20250514', label: 'Claude 4 Sonnet', provider: 'Anthropic' },
-  { value: 'claude-3-5-haiku-latest', label: 'Claude 4 Haiku', provider: 'Anthropic' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash', provider: 'Google' },
+  { value: 'gpt-5-2025-08-07', label: 'GPT-5', provider: 'OpenAI' },
+  { value: 'gpt-5-mini-2025-08-07', label: 'GPT-5 Mini', provider: 'OpenAI' },
+  { value: 'claude-sonnet-4-0', label: 'Claude Sonnet 4.0', provider: 'Anthropic' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', provider: 'Google' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', provider: 'Google' },
 ];
 
 export function PromptOptimization({

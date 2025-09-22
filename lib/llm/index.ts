@@ -3,6 +3,7 @@ import { decryptApiKey } from "@/lib/utils"
 import Anthropic from "@anthropic-ai/sdk"
 import { GoogleGenerativeAI } from "@google/generative-ai"
 import OpenAI from "openai"
+import { getModelSelection, getModelForTask, getMappedModel } from "@/lib/ai/models"
 
 export type LLMProvider = "openai" | "anthropic" | "gemini"
 
@@ -123,10 +124,10 @@ Respond in JSON format with fields: type, confidence, reasoning`
         case "openai":
           if (!this.openai) throw new Error("OpenAI not configured")
           const openaiResponse = await this.openai.chat.completions.create({
-            model:
+            model: getMappedModel(
               config?.model ||
-              process.env.OPENAI_DEFAULT_MODEL ||
-              "gpt-5-mini-2025-08-07",
+              getModelForTask('categorization')
+            ),
             messages: [{ role: "user", content: enhancedPrompt }],
             temperature: config?.temperature || 0.3,
             max_tokens: config?.maxTokens || 800,
@@ -138,10 +139,10 @@ Respond in JSON format with fields: type, confidence, reasoning`
         case "anthropic":
           if (!this.anthropic) throw new Error("Anthropic not configured")
           const anthropicResponse = await this.anthropic.messages.create({
-            model:
+            model: getMappedModel(
               config?.model ||
-              process.env.ANTHROPIC_DEFAULT_MODEL ||
-              "claude-sonnet-4-20250514",
+              getModelSelection().anthropic.default
+            ),
             messages: [{ role: "user", content: enhancedPrompt }],
             max_tokens: config?.maxTokens || 800,
             temperature: config?.temperature || 0.3,
@@ -155,7 +156,7 @@ Respond in JSON format with fields: type, confidence, reasoning`
         case "gemini":
           if (!this.genAI) throw new Error("Gemini not configured")
           const model = this.genAI.getGenerativeModel({
-            model: config?.model || "gemini-pro",
+            model: getMappedModel(config?.model || getModelSelection().google.default),
           })
           const geminiResponse = await model.generateContent(enhancedPrompt)
           result = geminiResponse.response.text()
@@ -218,10 +219,10 @@ Respond in JSON format with fields: optimizedContent, suggestions (array), confi
         case "openai":
           if (!this.openai) throw new Error("OpenAI not configured")
           const openaiResponse = await this.openai.chat.completions.create({
-            model:
+            model: getMappedModel(
               config?.model ||
-              process.env.OPENAI_DEFAULT_MODEL ||
-              "gpt-5-mini-2025-08-07",
+              getModelForTask('categorization')
+            ),
             messages: [{ role: "user", content: prompt }],
             temperature: config?.temperature || 0.4,
             max_tokens: config?.maxTokens || 1500,
@@ -233,10 +234,10 @@ Respond in JSON format with fields: optimizedContent, suggestions (array), confi
         case "anthropic":
           if (!this.anthropic) throw new Error("Anthropic not configured")
           const anthropicResponse = await this.anthropic.messages.create({
-            model:
+            model: getMappedModel(
               config?.model ||
-              process.env.ANTHROPIC_DEFAULT_MODEL ||
-              "claude-sonnet-4-20250514",
+              getModelSelection().anthropic.default
+            ),
             messages: [{ role: "user", content: prompt }],
             max_tokens: config?.maxTokens || 1500,
             temperature: config?.temperature || 0.4,
@@ -250,7 +251,7 @@ Respond in JSON format with fields: optimizedContent, suggestions (array), confi
         case "gemini":
           if (!this.genAI) throw new Error("Gemini not configured")
           const model = this.genAI.getGenerativeModel({
-            model: config?.model || "gemini-pro",
+            model: getMappedModel(config?.model || getModelSelection().google.default),
           })
           const geminiResponse = await model.generateContent(prompt)
           result = geminiResponse.response.text()
@@ -304,10 +305,10 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case "openai":
           if (!this.openai) throw new Error("OpenAI not configured")
           const openaiResponse = await this.openai.chat.completions.create({
-            model:
+            model: getMappedModel(
               config?.model ||
-              process.env.OPENAI_DEFAULT_MODEL ||
-              "gpt-5-mini-2025-08-07",
+              getModelForTask('categorization')
+            ),
             messages: [{ role: "user", content: prompt }],
             temperature: config?.temperature || 0.2,
             max_tokens: config?.maxTokens || 2000,
@@ -319,10 +320,10 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case "anthropic":
           if (!this.anthropic) throw new Error("Anthropic not configured")
           const anthropicResponse = await this.anthropic.messages.create({
-            model:
+            model: getMappedModel(
               config?.model ||
-              process.env.ANTHROPIC_DEFAULT_MODEL ||
-              "claude-sonnet-4-20250514",
+              getModelSelection().anthropic.default
+            ),
             messages: [{ role: "user", content: prompt }],
             max_tokens: config?.maxTokens || 2000,
             temperature: config?.temperature || 0.2,
@@ -336,7 +337,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case "gemini":
           if (!this.genAI) throw new Error("Gemini not configured")
           const model = this.genAI.getGenerativeModel({
-            model: config?.model || "gemini-pro",
+            model: getMappedModel(config?.model || getModelSelection().google.default),
           })
           const geminiResponse = await model.generateContent(prompt)
           result = geminiResponse.response.text()
@@ -535,7 +536,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case "anthropic":
           if (!this.anthropic) throw new Error("Anthropic not configured")
           const anthropicResponse = await this.anthropic.messages.create({
-            model: options?.model || "claude-3-5-haiku-latest",
+            model: getMappedModel(options?.model || getModelSelection().anthropic.fast),
             messages: [{ role: "user", content: prompt }],
             max_tokens: options?.maxTokens || 1000,
             temperature: options?.temperature || 0.3,
@@ -549,7 +550,7 @@ Respond in JSON format with fields: convertedContent, format, metadata (optional
         case "gemini":
           if (!this.genAI) throw new Error("Gemini not configured")
           const model = this.genAI.getGenerativeModel({
-            model: options?.model || "gemini-pro",
+            model: getMappedModel(options?.model || getModelSelection().google.default),
           })
           const geminiResponse = await model.generateContent(prompt)
           result = geminiResponse.response.text()

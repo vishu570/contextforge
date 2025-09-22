@@ -80,7 +80,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
   const [metadata, setMetadata] = useState<ItemMetadata>({
     author: 'Admin User',
     language: 'en',
-    targetModels: ['gpt-4', 'claude-3', 'gemini-pro'],
+    targetModels: ['gpt-5-2025-08-07', 'claude-sonnet-4-0', 'gemini-2.5-pro'],
     tags: tab.tags || [],
     version: '1.0.0',
     format: tab.format,
@@ -411,7 +411,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
                     <div className="space-y-1">
                       <Label className="text-xs text-gray-400">Target Models</Label>
                       <div className="space-y-2">
-                        {['gpt-4', 'claude-3', 'gemini-pro', 'llama-2'].map((model) => (
+                        {['gpt-5-2025-08-07', 'claude-sonnet-4-0', 'gemini-2.5-pro', 'gemini-2.5-flash'].map((model) => (
                           <div key={model} className="flex items-center space-x-2">
                             <Switch
                               checked={metadata.targetModels?.includes(model)}

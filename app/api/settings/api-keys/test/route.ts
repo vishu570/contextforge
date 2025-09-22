@@ -46,7 +46,7 @@ async function testAnthropicKey(apiKey: string): Promise<{ success: boolean; mes
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
+        model: process.env.ANTHROPIC_DEFAULT_MODEL || "claude-sonnet-4-0",
         max_tokens: 1,
         messages: [{ role: "user", content: "test" }],
       }),
