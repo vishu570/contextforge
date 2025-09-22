@@ -74,21 +74,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
   // Transform database items to file tree structure
   const transformItemsToTree = (items: any[]): FileTreeItem[] => {
     return items.map(item => {
-      let folderPath = '';
-
-      // Extract folder path from metadata if available
-      try {
-        const metadata = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
-        if (metadata?.originalPath) {
-          // Extract directory path from originalPath (e.g., "categories/01-core-development/api-designer.md" -> "categories/01-core-development")
-          const pathParts = metadata.originalPath.split('/');
-          if (pathParts.length > 1) {
-            folderPath = pathParts.slice(0, -1).join('/');
-          }
-        }
-      } catch (error) {
-        console.warn('Failed to parse metadata for item:', item.name, error);
-      }
+      // No longer use folderPath from metadata - organize by item type/category instead
 
       return {
         id: item.id,
@@ -98,7 +84,6 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
         content: item.content || '',
         updatedAt: new Date(item.updatedAt),
         tags: item.tags || [],
-        folderPath: folderPath || item.type, // fallback to type if no folder path
         metadata: item.metadata,
       };
     });

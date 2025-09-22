@@ -17,6 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { EditorTab } from '@/editor';
 import { useToast } from '@/hooks/use-toast';
+import { AI_MODEL_NAMES } from '@/lib/constants/ai-models';
 import {
   Archive,
   Bot,
@@ -43,6 +44,11 @@ interface ComprehensiveEditorProps {
   tab: EditorTab;
   onChange: (content: string) => void;
   onSave: () => void;
+  userSession?: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
 }
 
 interface ItemMetadata {
@@ -75,12 +81,12 @@ interface VersionHistory {
   content: string;
 }
 
-export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEditorProps) {
+export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: ComprehensiveEditorProps) {
   const { toast } = useToast();
   const [metadata, setMetadata] = useState<ItemMetadata>({
-    author: 'Admin User',
+    author: userSession?.name || userSession?.email || 'Unknown User',
     language: 'en',
-    targetModels: ['gpt-5-2025-08-07', 'claude-sonnet-4-0', 'gemini-2.5-pro'],
+    targetModels: [AI_MODEL_NAMES[0], AI_MODEL_NAMES[2], AI_MODEL_NAMES[3]], // GPT-5, Claude Sonnet 4.0, Gemini 2.5 Pro
     tags: tab.tags || [],
     version: '1.0.0',
     format: tab.format,
@@ -113,7 +119,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
       id: '1',
       version: '1.0.0',
       timestamp: new Date(),
-      author: 'Admin User',
+      author: userSession?.name || userSession?.email || 'Unknown User',
       changes: 'Initial version',
       content: tab.content,
     },
@@ -279,16 +285,18 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex">
+        <div className="flex-1 flex min-h-0">
           {/* Editor/Preview/Optimize Panel */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 min-h-0">
             {activeView === 'edit' && (
-              <MonacoEditor
-                value={tab.content}
-                language={getEditorLanguage(tab.format)}
-                onChange={onChange}
-                theme="vs-dark-contextforge"
-              />
+              <div className="h-full">
+                <MonacoEditor
+                  value={tab.content}
+                  language={getEditorLanguage(tab.format)}
+                  onChange={onChange}
+                  theme="vs-dark-contextforge"
+                />
+              </div>
             )}
 
             {activeView === 'preview' && (
@@ -411,7 +419,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
                     <div className="space-y-1">
                       <Label className="text-xs text-gray-400">Target Models</Label>
                       <div className="space-y-2">
-                        {['gpt-5-2025-08-07', 'claude-sonnet-4-0', 'gemini-2.5-pro', 'gemini-2.5-flash'].map((model) => (
+                        {AI_MODEL_NAMES.map((model) => (
                           <div key={model} className="flex items-center space-x-2">
                             <Switch
                               checked={metadata.targetModels?.includes(model)}
@@ -580,7 +588,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave }: ComprehensiveEdit
                               </span>
                             </div>
                             <p className="text-xs text-gray-400 mt-1">{version.changes}</p>
-                            <p className="text-xs text-gray-500">by {version.author}</p>
+                            <p className="text-xs text-gray-500">by {userSession?.name || userSession?.email || version.author}</p>
                           </div>
                         ))}
                       </div>

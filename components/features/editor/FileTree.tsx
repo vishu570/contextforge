@@ -65,6 +65,171 @@ const typeBadgeColors = {
   other: 'bg-gray-800/30 text-gray-300 border-gray-700/50',
 };
 
+// Sub-categorization functions based on the desired structure
+function getPromptSubCategory(item: FileTreeItem): string {
+  const name = item.name.toLowerCase();
+  const content = item.content.toLowerCase();
+  const tags = item.tags || [];
+
+  // Business & Strategy
+  if (tags.some(tag => ['business', 'strategy', 'market', 'competitive', 'research'].includes(tag.toLowerCase())) ||
+      name.includes('business') || name.includes('strategy') || name.includes('market') || name.includes('competitive')) {
+    return 'Business & Strategy';
+  }
+
+  // Automation
+  if (tags.some(tag => ['automation', 'workflow', 'orchestrator', 'coordinator'].includes(tag.toLowerCase())) ||
+      name.includes('automation') || name.includes('workflow') || name.includes('orchestrator')) {
+    return 'Automation';
+  }
+
+  // Creative & Design
+  if (tags.some(tag => ['creative', 'design', 'ui', 'ux'].includes(tag.toLowerCase())) ||
+      name.includes('creative') || name.includes('design') || name.includes('ui')) {
+    return 'Creative & Design';
+  }
+
+  // Data & Analytics
+  if (tags.some(tag => ['data', 'analytics', 'analysis', 'scientist'].includes(tag.toLowerCase())) ||
+      name.includes('data') || name.includes('analytics') || name.includes('analyst')) {
+    return 'Data & Analytics';
+  }
+
+  // Development
+  if (tags.some(tag => ['development', 'developer', 'engineer', 'coding', 'programming'].includes(tag.toLowerCase())) ||
+      name.includes('developer') || name.includes('engineer') || name.includes('coding')) {
+    return 'Development';
+  }
+
+  // Marketing
+  if (tags.some(tag => ['marketing', 'content', 'seo'].includes(tag.toLowerCase())) ||
+      name.includes('marketing') || name.includes('content') || name.includes('seo')) {
+    return 'Marketing';
+  }
+
+  return 'General';
+}
+
+function getRuleSubCategory(item: FileTreeItem): string {
+  const name = item.name.toLowerCase();
+  const content = item.content.toLowerCase();
+  const tags = item.tags || [];
+
+  // Assistants
+  if (name.includes('assistant') || content.includes('assistant')) {
+    return 'Assistants';
+  }
+
+  // Memory
+  if (name.includes('memory') || content.includes('memory')) {
+    return 'Memory';
+  }
+
+  // Personas
+  if (name.includes('persona') || content.includes('persona')) {
+    return 'Personas';
+  }
+
+  // Planning
+  if (name.includes('plan') || content.includes('planning')) {
+    return 'Planning';
+  }
+
+  // Reasoning
+  if (name.includes('reason') || content.includes('reasoning')) {
+    return 'Reasoning';
+  }
+
+  return 'General';
+}
+
+function getAgentSubCategory(item: FileTreeItem): string {
+  const name = item.name.toLowerCase();
+  const tags = item.tags || [];
+
+  // Frameworks
+  if (tags.some(tag => ['framework', 'architecture'].includes(tag.toLowerCase())) ||
+      name.includes('framework') || name.includes('architect')) {
+    return 'Frameworks';
+  }
+
+  // Languages
+  if (tags.some(tag => ['language', 'programming-language'].includes(tag.toLowerCase())) ||
+      name.includes('python') || name.includes('javascript') || name.includes('java') ||
+      name.includes('csharp') || name.includes('golang') || name.includes('rust') ||
+      name.includes('php') || name.includes('typescript') || name.includes('swift') ||
+      name.includes('kotlin') || name.includes('cpp')) {
+    return 'Languages';
+  }
+
+  // Models
+  if (tags.some(tag => ['model', 'ai-model'].includes(tag.toLowerCase())) ||
+      name.includes('model') || name.includes('llm')) {
+    return 'Models';
+  }
+
+  // Tools
+  if (tags.some(tag => ['tool', 'utility', 'cli'].includes(tag.toLowerCase())) ||
+      name.includes('tool') || name.includes('cli') || name.includes('utility')) {
+    return 'Tools';
+  }
+
+  return 'General';
+}
+
+function getCommandSubCategory(item: FileTreeItem): string {
+  const name = item.name.toLowerCase();
+  const content = item.content.toLowerCase();
+
+  // Git commands
+  if (name.includes('git') || content.includes('git')) {
+    return 'Git';
+  }
+
+  // Docker commands
+  if (name.includes('docker') || content.includes('docker')) {
+    return 'Docker';
+  }
+
+  // Package management
+  if (name.includes('npm') || name.includes('yarn') || name.includes('pnpm') ||
+      content.includes('npm') || content.includes('yarn') || content.includes('pnpm')) {
+    return 'Package Management';
+  }
+
+  // Development tools
+  if (name.includes('build') || name.includes('webpack') || name.includes('vite') ||
+      content.includes('build') || content.includes('webpack') || content.includes('vite')) {
+    return 'Build Tools';
+  }
+
+  return 'General';
+}
+
+function getTemplateSubCategory(item: FileTreeItem): string {
+  const name = item.name.toLowerCase();
+  const content = item.content.toLowerCase();
+
+  // Code templates
+  if (name.includes('component') || content.includes('component')) {
+    return 'Code';
+  }
+
+  // Documentation templates
+  if (name.includes('readme') || name.includes('documentation') || name.includes('api') ||
+      content.includes('readme') || content.includes('documentation') || content.includes('api')) {
+    return 'Documentation';
+  }
+
+  // Configuration templates
+  if (name.includes('config') || name.includes('eslint') || name.includes('webpack') ||
+      content.includes('config') || content.includes('eslint') || content.includes('webpack')) {
+    return 'Configuration';
+  }
+
+  return 'General';
+}
+
 // Helper function to format time ago
 function formatTimeAgo(date: Date): string {
   const now = new Date();
@@ -92,7 +257,7 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'updated' | 'type'>('updated');
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['categories/01-core-development', 'categories/02-infrastructure-devops', 'categories/03-testing-qa', 'categories/04-frontend-ui', 'categories/05-data-ai', 'categories/06-developer-experience', 'categories/07-specialized-domains', 'categories/08-business-product', 'categories/09-meta-orchestration', 'categories/10-research-analysis']));
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['Prompts', 'Prompts/Business & Strategy', 'Rules', 'Agents']));
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   // Sort items based on sort preference
@@ -111,9 +276,39 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
     });
   };
 
-  // Group items by folder path for proper folder organization
+  // Group items by item type with sub-categorization
   const groupedItems = items.reduce((acc, item) => {
-    const key = item.folderPath || 'uncategorized';
+    let primaryCategory = '';
+    let subCategory = '';
+
+    // Determine primary category
+    switch (item.type) {
+      case 'agent':
+        primaryCategory = 'Agents';
+        subCategory = getAgentSubCategory(item);
+        break;
+      case 'prompt':
+        primaryCategory = 'Prompts';
+        subCategory = getPromptSubCategory(item);
+        break;
+      case 'rule':
+        primaryCategory = 'Rules';
+        subCategory = getRuleSubCategory(item);
+        break;
+      case 'template':
+        primaryCategory = 'Templates';
+        subCategory = getTemplateSubCategory(item);
+        break;
+      case 'snippet':
+        primaryCategory = 'Commands';
+        subCategory = getCommandSubCategory(item);
+        break;
+      default:
+        primaryCategory = 'Other';
+        subCategory = 'General';
+    }
+
+    const key = `${primaryCategory}/${subCategory}`;
     if (!acc[key]) {
       acc[key] = [];
     }
@@ -153,22 +348,26 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
     });
   };
 
-  const getFolderIcon = (folderType: string) => {
-    switch (folderType) {
-      case 'prompts': return FileText;
-      case 'agents': return Bot;
-      case 'rules': return FileCode;
-      case 'templates': return Webhook;
+  const getFolderIcon = (categoryName: string) => {
+    switch (categoryName) {
+      case 'Prompts': return FileText;
+      case 'Agents': return Bot;
+      case 'Rules': return FileCode;
+      case 'Templates': return Webhook;
+      case 'Commands': return FileCode;
+      case 'Configurations': return FileCode;
       default: return FileText;
     }
   };
 
-  const getFolderColor = (folderType: string) => {
-    switch (folderType) {
-      case 'prompts': return 'text-blue-400';
-      case 'agents': return 'text-green-400';
-      case 'rules': return 'text-purple-400';
-      case 'templates': return 'text-orange-400';
+  const getFolderColor = (categoryName: string) => {
+    switch (categoryName) {
+      case 'Prompts': return 'text-blue-400';
+      case 'Agents': return 'text-green-400';
+      case 'Rules': return 'text-purple-400';
+      case 'Templates': return 'text-orange-400';
+      case 'Commands': return 'text-red-400';
+      case 'Configurations': return 'text-indigo-400';
       default: return 'text-gray-400';
     }
   };
@@ -264,37 +463,77 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
             )}
           </div>
         ) : (
-          Object.entries(filteredGroupedItems).map(([folderName, folderItems]) => {
-            const FolderIcon = getFolderIcon(folderName);
-            const folderColor = getFolderColor(folderName);
-            const isExpanded = expandedFolders.has(folderName);
-            const folderType = folderName.slice(0, -1); // Remove 's' from end
+          // Group by primary category for hierarchical display
+          (() => {
+            const hierarchicalStructure = Object.entries(filteredGroupedItems).reduce((acc, [fullPath, items]) => {
+              const [primaryCategory, subCategory] = fullPath.split('/');
 
-            return (
-              <div key={folderName} className="mb-2">
-                {/* Folder Header */}
-                <button
-                  onClick={() => toggleFolder(folderName)}
-                  className="flex items-center w-full px-2 py-1 rounded hover:bg-gray-800/50 transition-colors"
-                >
-                  <div className="flex items-center space-x-2 flex-1">
-                    <div className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
-                      ▶
+              if (!acc[primaryCategory]) {
+                acc[primaryCategory] = {};
+              }
+              acc[primaryCategory][subCategory] = items;
+
+              return acc;
+            }, {} as Record<string, Record<string, FileTreeItem[]>>);
+
+            return Object.entries(hierarchicalStructure).map(([primaryCategory, subCategories]) => {
+              const PrimaryIcon = getFolderIcon(primaryCategory);
+              const primaryColor = getFolderColor(primaryCategory);
+              const isPrimaryExpanded = expandedFolders.has(primaryCategory);
+              const totalItems = Object.values(subCategories).flat().length;
+
+              return (
+                <div key={primaryCategory} className="mb-2">
+                  {/* Primary Category Header */}
+                  <button
+                    onClick={() => toggleFolder(primaryCategory)}
+                    className="flex items-center w-full px-2 py-1 rounded hover:bg-gray-800/50 transition-colors"
+                  >
+                    <div className="flex items-center space-x-2 flex-1">
+                      <div className={`transform transition-transform ${isPrimaryExpanded ? 'rotate-90' : ''}`}>
+                        ▶
+                      </div>
+                      <PrimaryIcon className={`h-4 w-4 ${primaryColor}`} />
+                      <span className="text-sm text-gray-200 font-medium">
+                        {primaryCategory}
+                      </span>
+                      <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
+                        {totalItems}
+                      </Badge>
                     </div>
-                    <FolderIcon className={`h-4 w-4 ${folderColor}`} />
-                    <span className="text-sm text-gray-200 font-medium capitalize">
-                      {folderName}
-                    </span>
-                    <Badge variant="secondary" className="text-xs px-1 py-0 h-4">
-                      {folderItems.length}
-                    </Badge>
-                  </div>
-                </button>
+                  </button>
 
-                {/* Folder Contents */}
-                {isExpanded && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {folderItems.map((item) => {
+                  {/* Sub-categories */}
+                  {isPrimaryExpanded && (
+                    <div className="ml-4 mt-1 space-y-1">
+                      {Object.entries(subCategories).map(([subCategory, subItems]) => {
+                        const subPath = `${primaryCategory}/${subCategory}`;
+                        const isSubExpanded = expandedFolders.has(subPath);
+
+                        return (
+                          <div key={subPath}>
+                            {/* Sub-category Header */}
+                            <button
+                              onClick={() => toggleFolder(subPath)}
+                              className="flex items-center w-full px-2 py-1 rounded hover:bg-gray-800/50 transition-colors text-sm"
+                            >
+                              <div className="flex items-center space-x-2 flex-1">
+                                <div className={`transform transition-transform ${isSubExpanded ? 'rotate-90' : ''}`}>
+                                  ▶
+                                </div>
+                                <span className="text-gray-300">
+                                  {subCategory}
+                                </span>
+                                <Badge variant="outline" className="text-xs px-1 py-0 h-4">
+                                  {subItems.length}
+                                </Badge>
+                              </div>
+                            </button>
+
+                            {/* Sub-category Contents */}
+                            {isSubExpanded && (
+                              <div className="ml-6 mt-1 space-y-1">
+                                {subItems.map((item) => {
                       const ItemIcon = typeIcons[item.type];
                       const itemColor = typeColors[item.type];
                       const isSelected = selectedItemId === item.id;
@@ -396,13 +635,19 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()
         )}
       </div>
 

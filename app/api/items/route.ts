@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const type = url.searchParams.get('type');
     const collectionId = url.searchParams.get('collectionId');
     const search = url.searchParams.get('search');
-    const limit = parseInt(url.searchParams.get('limit') || '100');
+    const limit = parseInt(url.searchParams.get('limit') || '1000'); // Increased default limit
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     // Build where clause

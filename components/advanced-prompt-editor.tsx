@@ -37,6 +37,7 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { AI_MODELS } from '@/lib/constants/ai-models';
 
 // Dynamically import Monaco Editor
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
@@ -130,14 +131,6 @@ interface AdvancedPromptEditorProps {
   showAnalytics?: boolean;
 }
 
-const AI_MODELS = [
-  { id: 'gpt-5-2025-08-07', name: 'GPT-5', provider: 'OpenAI', costPer1K: 0.01 },
-  { id: 'gpt-5-mini-2025-08-07', name: 'GPT-5 Mini', provider: 'OpenAI', costPer1K: 0.0015 },
-  { id: 'claude-sonnet-4-0', name: 'Claude Sonnet 4.0', provider: 'Anthropic', costPer1K: 0.003 },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'Google', costPer1K: 0.0035 },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'Google', costPer1K: 0.0005 },
-];
-
 const TEMPLATE_BLOCKS: TemplateBlock[] = [
   {
     id: 'system-instruction',
@@ -225,7 +218,7 @@ export function AdvancedPromptEditor({
       content: initialData?.content || '',
       description: initialData?.description || '',
       variables: variables,
-      targetModels: initialData?.targetModels || ['gpt-5-mini-2025-08-07'],
+      targetModels: initialData?.targetModels || [AI_MODELS[1].name], // GPT-5 Mini
       format: initialData?.format || 'text',
       category: initialData?.category || '',
       tags: initialData?.tags || [],
