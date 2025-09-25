@@ -1,3 +1,11 @@
+export interface CollectionSummary {
+  id: string;
+  name: string;
+  path?: string | null;
+  color?: string | null;
+  icon?: string | null;
+}
+
 export interface EditorTab {
   id: string;
   title: string;
@@ -5,6 +13,7 @@ export interface EditorTab {
   type: string;
   format: string;
   unsaved?: boolean;
+  collections?: CollectionSummary[];
 }
 
 export interface FileTreeItem {
@@ -14,6 +23,7 @@ export interface FileTreeItem {
   format?: string;
   content?: string;
   children?: FileTreeItem[];
+  collections?: CollectionSummary[];
 }
 
 export interface EditorState {

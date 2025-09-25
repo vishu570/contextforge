@@ -66,7 +66,9 @@ async function getItems(userId: string) {
             select: {
               id: true,
               name: true,
-              path: true
+              path: true,
+              icon: true,
+              color: true
             }
           }
         }
@@ -76,7 +78,11 @@ async function getItems(userId: string) {
   });
 }
 
-export default async function CollectionsPage() {
+export default async function CollectionsPage({
+  searchParams
+}: {
+  searchParams?: { folder?: string };
+}) {
   const cookieStore = await cookies();
   const token = cookieStore.get('auth-token')?.value;
 
@@ -94,6 +100,8 @@ export default async function CollectionsPage() {
     getItems(user.id)
   ]);
 
+  const initialSelectedFolderId = searchParams?.folder ?? null;
+
   return (
     <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -109,6 +117,7 @@ export default async function CollectionsPage() {
           initialFolders={folders}
           initialItems={items}
           userId={user.id}
+          initialSelectedFolderId={initialSelectedFolderId}
         />
       </div>
   );

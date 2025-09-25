@@ -71,6 +71,19 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
     fetchData();
   }, []);
 
+  const parseMetadata = (rawMetadata: unknown) => {
+    if (!rawMetadata) return {};
+    if (typeof rawMetadata === 'string') {
+      try {
+        return JSON.parse(rawMetadata);
+      } catch (error) {
+        console.warn('Failed to parse item metadata', error);
+        return {};
+      }
+    }
+    return rawMetadata;
+  };
+
   // Transform database items to file tree structure
   const transformItemsToTree = (items: any[]): FileTreeItem[] => {
     return items.map(item => {
@@ -84,7 +97,8 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
         content: item.content || '',
         updatedAt: new Date(item.updatedAt),
         tags: item.tags || [],
-        metadata: item.metadata,
+        metadata: parseMetadata(item.metadata),
+        collections: item.collections || [],
       };
     });
   };
@@ -108,6 +122,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
           format: item.format,
           tags: item.tags,
           metadata: item.metadata,
+          collections: item.collections,
           unsaved: false,
           lastModified: item.updatedAt,
         };

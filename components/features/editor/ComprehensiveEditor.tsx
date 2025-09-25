@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { EditorTab } from '@/editor';
 import { useToast } from '@/hooks/use-toast';
 import { AI_MODEL_NAMES } from '@/lib/constants/ai-models';
+import { useRouter } from 'next/navigation';
 import {
   Archive,
   Bot,
@@ -28,6 +29,7 @@ import {
   FileCode,
   FileJson,
   FileText,
+  FolderOpen,
   GitBranch,
   History,
   Save,
@@ -83,6 +85,7 @@ interface VersionHistory {
 
 export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: ComprehensiveEditorProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [metadata, setMetadata] = useState<ItemMetadata>({
     author: userSession?.name || userSession?.email || 'Unknown User',
     language: 'en',
@@ -130,6 +133,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
   const [selectedLLM, setSelectedLLM] = useState<'openai' | 'claude' | 'gemini'>('openai');
   const [newTag, setNewTag] = useState('');
   const [copied, setCopied] = useState(false);
+  const collections = tab.collections || [];
 
   // Update metadata when tab changes
   useEffect(() => {
@@ -196,6 +200,28 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
       title: 'Import from GitHub',
       description: 'Opening GitHub import dialog...',
     });
+  };
+
+  const handleCollectionNavigate = (collection: { id: string; name: string }) => {
+    if (!collection?.id) return;
+    router.push(`/dashboard/collections?folder=${collection.id}`);
+  };
+
+  const handleAddToCollection = () => {
+    router.push('/dashboard/collections');
+  };
+
+  const getCollectionIcon = (icon?: string | null) => {
+    switch (icon?.toLowerCase()) {
+      case 'zap':
+      case 'lightning':
+        return <Zap className="h-3 w-3 mr-2" />;
+      case 'bot':
+      case 'robot':
+        return <Bot className="h-3 w-3 mr-2" />;
+      default:
+        return <FolderOpen className="h-3 w-3 mr-2" />;
+    }
   };
 
   const handleExport = (format: string) => {
@@ -602,31 +628,34 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
                     <CardTitle className="text-sm text-white">Collections</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                      >
-                        <Zap className="h-3 w-3 mr-2" />
-                        Next.js + Supabase
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                      >
-                        <Bot className="h-3 w-3 mr-2" />
-                        Claude Code Agents
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start text-gray-400"
-                      >
-                        + Add to Collection
-                      </Button>
-                    </div>
+                    {collections.length > 0 ? (
+                      <div className="space-y-2">
+                        {collections.map(collection => (
+                          <Button
+                            key={collection.id}
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => handleCollectionNavigate(collection)}
+                          >
+                            {getCollectionIcon(collection.icon)}
+                            {collection.name}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400">
+                        This item is not part of any collections yet.
+                      </p>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 w-full justify-start text-gray-400"
+                      onClick={handleAddToCollection}
+                    >
+                      + Add to Collection
+                    </Button>
                   </CardContent>
                 </Card>
               </div>

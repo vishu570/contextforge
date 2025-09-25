@@ -35,16 +35,20 @@ interface FolderManagementInterfaceProps {
   initialFolders: any[];
   initialItems: any[];
   userId: string;
+  initialSelectedFolderId?: string | null;
 }
 
 export function FolderManagementInterface({
   initialFolders,
   initialItems,
-  userId
+  userId,
+  initialSelectedFolderId = null
 }: FolderManagementInterfaceProps) {
   const [folders, setFolders] = useState(initialFolders);
   const [items, setItems] = useState(initialItems);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(
+    initialSelectedFolderId
+  );
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showBulkMove, setShowBulkMove] = useState(false);
@@ -58,6 +62,11 @@ export function FolderManagementInterface({
     filters,
     setFilters
   } = useFolderSearch();
+
+  useEffect(() => {
+    setSelectedFolderId(initialSelectedFolderId);
+    setSearchFolderId(initialSelectedFolderId);
+  }, [initialSelectedFolderId, setSearchFolderId]);
 
   // Get current folder for breadcrumb
   const currentFolder = selectedFolderId 
