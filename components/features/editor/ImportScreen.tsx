@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle, FileText, Github, Link2, Loader2, Upload, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { SourceTrackingPanel } from '../source-tracking/SourceTrackingPanel';
 
 interface ProgressLogEntry {
     id: string;
@@ -21,7 +22,11 @@ interface ProgressLogEntry {
     timestamp: number;
 }
 
-export function ImportScreen() {
+interface ImportScreenProps {
+    onClose?: () => void;
+}
+
+export function ImportScreen({ onClose }: ImportScreenProps = {}) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('files');
     const [isImporting, setIsImporting] = useState(false);
@@ -415,15 +420,40 @@ export function ImportScreen() {
         }
     };
 
+    // Handle escape key to close import screen
+    useEffect(() => {
+        const handleEscape = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && onClose && !isImporting) {
+                onClose();
+            }
+        };
+
+        window.addEventListener('keydown', handleEscape);
+        return () => window.removeEventListener('keydown', handleEscape);
+    }, [onClose, isImporting]);
+
     return (
         <div className="h-full bg-[#0F1117] overflow-auto">
             <div className="max-w-4xl mx-auto p-8">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-white mb-2">Import Context</h1>
-                    <p className="text-gray-400">
-                        Import prompts, agents, rules, and templates from various sources
-                    </p>
+                <div className="mb-8 flex items-start justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white mb-2">Import Context</h1>
+                        <p className="text-gray-400">
+                            Import prompts, agents, rules, and templates from various sources
+                        </p>
+                    </div>
+                    {onClose && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={onClose}
+                            className="text-gray-400 hover:text-white hover:bg-gray-700"
+                            disabled={isImporting}
+                        >
+                            <X className="h-5 w-5" />
+                        </Button>
+                    )}
                 </div>
 
                 {error && (
@@ -492,7 +522,7 @@ export function ImportScreen() {
                 )}
 
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-3 bg-[#161B22] border-gray-700">
+                    <TabsList className="grid w-full grid-cols-4 bg-[#161B22] border-gray-700">
                         <TabsTrigger value="files" className="data-[state=active]:bg-[#21262D]">
                             <Upload className="mr-2 h-4 w-4" />
                             Files
@@ -504,6 +534,10 @@ export function ImportScreen() {
                         <TabsTrigger value="url" className="data-[state=active]:bg-[#21262D]">
                             <Link2 className="mr-2 h-4 w-4" />
                             URL
+                        </TabsTrigger>
+                        <TabsTrigger value="tracking" className="data-[state=active]:bg-[#21262D]">
+                            <Github className="mr-2 h-4 w-4" />
+                            Sources
                         </TabsTrigger>
                     </TabsList>
 
@@ -739,6 +773,58 @@ export function ImportScreen() {
                                 </Button>
                             </CardContent>
                         </Card>
+                    </TabsContent>
+
+                    <TabsContent value="tracking">
+                        <SourceTrackingPanel
+                            onRefreshRepo={async (sourceId) => {
+                                try {
+                                    const response = await fetch('/api/sources/sync', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        credentials: 'include',
+                                        body: JSON.stringify({ sourceId }),
+                                    });
+
+                                    if (response.ok) {
+                                        const data = await response.json();
+                                        if (data.status === 'up_to_date') {
+                                            setSuccess('Repository is already up to date');
+                                        } else if (data.status === 'sync_started') {
+                                            setSuccess(`Sync started for ${data.repository}`);
+                                            // Could navigate to import review if needed
+                                        }
+                                    } else {
+                                        const error = await response.json();
+                                        setError(error.error || 'Failed to sync repository');
+                                    }
+                                } catch (err) {
+                                    setError('Failed to sync repository');
+                                    console.error('Sync error:', err);
+                                }
+                            }}
+                            onDeleteRepo={async (sourceId) => {
+                                try {
+                                    const response = await fetch('/api/sources/delete', {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        credentials: 'include',
+                                        body: JSON.stringify({ sourceId }),
+                                    });
+
+                                    if (response.ok) {
+                                        const data = await response.json();
+                                        setSuccess(`Stopped tracking ${data.deleted.repository}`);
+                                    } else {
+                                        const error = await response.json();
+                                        setError(error.error || 'Failed to delete repository tracking');
+                                    }
+                                } catch (err) {
+                                    setError('Failed to delete repository tracking');
+                                    console.error('Delete error:', err);
+                                }
+                            }}
+                        />
                     </TabsContent>
                 </Tabs>
             </div>

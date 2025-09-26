@@ -45,7 +45,8 @@ import { MonacoEditor } from './MonacoEditor';
 interface ComprehensiveEditorProps {
   tab: EditorTab;
   onChange: (content: string) => void;
-  onSave: () => void;
+  onSave: (metadata?: any) => void;
+  onShowImport?: () => void;
   userSession?: {
     id: string;
     email: string;
@@ -83,7 +84,7 @@ interface VersionHistory {
   content: string;
 }
 
-export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: ComprehensiveEditorProps) {
+export function ComprehensiveEditor({ tab, onChange, onSave, onShowImport, userSession }: ComprehensiveEditorProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [metadata, setMetadata] = useState<ItemMetadata>({
@@ -196,10 +197,14 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
   };
 
   const handleImportFromGitHub = () => {
-    toast({
-      title: 'Import from GitHub',
-      description: 'Opening GitHub import dialog...',
-    });
+    if (onShowImport) {
+      onShowImport();
+    } else {
+      toast({
+        title: 'Import from GitHub',
+        description: 'Opening GitHub import dialog...',
+      });
+    }
   };
 
   const handleCollectionNavigate = (collection: { id: string; name: string }) => {
@@ -224,11 +229,34 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
     }
   };
 
-  const handleExport = (format: string) => {
-    toast({
-      title: `Exporting as ${format}`,
-      description: `Your file is being exported as ${format}`,
-    });
+  const handleExport = async (format: string) => {
+    try {
+      toast({
+        title: `Exporting as ${format}`,
+        description: `Preparing your export...`,
+      });
+
+      const url = `/api/export?format=${format}&itemId=${tab.id}`;
+
+      // Create a temporary link to trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: 'Export Started',
+        description: `Your ${format.toUpperCase()} export should download shortly.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Export Failed',
+        description: 'There was an error exporting your file.',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -302,7 +330,7 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
             <Button
               variant="ghost"
               size="sm"
-              onClick={onSave}
+              onClick={() => onSave(metadata)}
               className="h-8"
             >
               <Save className="h-4 w-4" />
@@ -550,12 +578,43 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
                       type="file"
                       hidden
                       accept=".json,.yaml,.yml,.md,.txt"
-                      onChange={(e) => {
-                        if (e.target.files?.[0]) {
-                          toast({
-                            title: 'File uploaded',
-                            description: `Importing ${e.target.files[0].name}...`,
-                          });
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            toast({
+                              title: 'Uploading file',
+                              description: `Uploading ${file.name}...`,
+                            });
+
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('format', file.name.endsWith('.json') ? 'json' : file.name.endsWith('.yaml') || file.name.endsWith('.yml') ? 'yaml' : 'csv');
+
+                            const response = await fetch('/api/import/files', {
+                              method: 'POST',
+                              credentials: 'include',
+                              body: formData,
+                            });
+
+                            if (response.ok) {
+                              const result = await response.json();
+                              toast({
+                                title: 'File uploaded successfully',
+                                description: `Imported ${result.processedCount || 0} items from ${file.name}`,
+                              });
+                            } else {
+                              throw new Error('Upload failed');
+                            }
+                          } catch (error) {
+                            toast({
+                              title: 'Upload failed',
+                              description: `Failed to upload ${file.name}`,
+                              variant: 'destructive',
+                            });
+                          }
+                          // Reset the input
+                          e.target.value = '';
                         }
                       }}
                     />
@@ -658,6 +717,93 @@ export function ComprehensiveEditor({ tab, onChange, onSave, userSession }: Comp
                     </Button>
                   </CardContent>
                 </Card>
+
+                {/* Source Information Section */}
+                {tab.source && (
+                  <Card className="bg-gray-900 border-gray-700">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm text-white flex items-center gap-2">
+                        <GitBranch className="h-4 w-4" />
+                        Source
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400">Repository</span>
+                          <span className="text-xs text-white font-mono">
+                            {tab.source.repoOwner}/{tab.source.repoName}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-gray-400">Branch</span>
+                          <span className="text-xs text-white font-mono">
+                            {tab.source.branch || 'main'}
+                          </span>
+                        </div>
+                        {tab.source.lastImportedAt && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-400">Last Sync</span>
+                            <span className="text-xs text-white">
+                              {new Date(tab.source.lastImportedAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {tab.source.url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start text-xs"
+                          onClick={() => window.open(tab.source?.url || '', '_blank')}
+                        >
+                          <Webhook className="h-3 w-3 mr-2" />
+                          View on GitHub
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start text-xs"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/sources/sync', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ sourceId: tab.source?.id }),
+                            });
+
+                            if (response.ok) {
+                              const data = await response.json();
+                              if (data.status === 'up_to_date') {
+                                toast({ title: 'Repository is up to date' });
+                              } else if (data.status === 'sync_started') {
+                                toast({ title: `Sync started for ${data.repository}` });
+                              }
+                            } else {
+                              const error = await response.json();
+                              toast({
+                                title: 'Sync failed',
+                                description: error.error || 'Failed to sync repository',
+                                variant: 'destructive'
+                              });
+                            }
+                          } catch (err) {
+                            toast({
+                              title: 'Sync failed',
+                              description: 'Failed to sync repository',
+                              variant: 'destructive'
+                            });
+                          }
+                        }}
+                      >
+                        <Zap className="h-3 w-3 mr-2" />
+                        Sync Repository
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </ScrollArea>
           </div>

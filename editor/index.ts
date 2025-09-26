@@ -6,6 +6,16 @@ export interface CollectionSummary {
   icon?: string | null;
 }
 
+export interface SourceSummary {
+  id: string;
+  type: string;
+  url?: string | null;
+  repoOwner?: string | null;
+  repoName?: string | null;
+  branch?: string | null;
+  lastImportedAt?: Date | null;
+}
+
 export interface EditorTab {
   id: string;
   title: string;
@@ -15,6 +25,7 @@ export interface EditorTab {
   tags?: string[];
   metadata?: any;
   collections?: CollectionSummary[];
+  source?: SourceSummary | null;
   unsaved?: boolean;
   lastModified?: Date;
 }
@@ -30,6 +41,7 @@ export interface FileTreeItem {
   folderPath?: string;
   metadata?: any;
   collections?: CollectionSummary[];
+  source?: SourceSummary | null;
   isFolder?: boolean;
   children?: FileTreeItem[];
   expanded?: boolean;
@@ -48,7 +60,7 @@ export interface EditorActions {
   closeTab: (tabId: string) => void;
   switchTab: (tabId: string) => void;
   updateTab: (tabId: string, content: string) => void;
-  saveTab: (tabId: string) => Promise<void>;
+  saveTab: (tabId: string, metadata?: any) => Promise<void>;
   createFile: (type: string, parentId?: string) => void;
   renameFile: (fileId: string, newName: string) => void;
   deleteFile: (fileId: string) => void;

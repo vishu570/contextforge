@@ -476,7 +476,9 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
               return acc;
             }, {} as Record<string, Record<string, FileTreeItem[]>>);
 
-            return Object.entries(hierarchicalStructure).map(([primaryCategory, subCategories]) => {
+            return Object.entries(hierarchicalStructure)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([primaryCategory, subCategories]) => {
               const PrimaryIcon = getFolderIcon(primaryCategory);
               const primaryColor = getFolderColor(primaryCategory);
               const isPrimaryExpanded = expandedFolders.has(primaryCategory);
@@ -506,7 +508,9 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
                   {/* Sub-categories */}
                   {isPrimaryExpanded && (
                     <div className="ml-4 mt-1 space-y-1">
-                      {Object.entries(subCategories).map(([subCategory, subItems]) => {
+                      {Object.entries(subCategories)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([subCategory, subItems]) => {
                         const subPath = `${primaryCategory}/${subCategory}`;
                         const isSubExpanded = expandedFolders.has(subPath);
 
@@ -651,22 +655,6 @@ export function FileTree({ items, onFileSelect, onFileCreate, onFileRename, onFi
         )}
       </div>
 
-      {/* Status Bar */}
-      <div className="p-2 border-t border-gray-700">
-        <div className="flex justify-between items-center text-xs text-gray-500">
-          <div>
-            {Object.values(filteredGroupedItems).flat().length} of {items.length} items
-          </div>
-          <div className="flex space-x-2">
-            {Object.entries(groupedItems).map(([type, items]) => (
-              <span key={type} className="flex items-center space-x-1">
-                <div className={`w-2 h-2 rounded-full ${getFolderColor(type).replace('text-', 'bg-')}`} />
-                <span>{items.length}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

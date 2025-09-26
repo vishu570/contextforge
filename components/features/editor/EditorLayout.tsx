@@ -27,6 +27,9 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
     previewPanelExpanded: false,
   });
 
+  // User state
+  const [userSession, setUserSession] = useState<{ id: string; email: string; name: string | null } | null>(null);
+
   // Import mode state
   const [showImport, setShowImport] = useState(false);
 
@@ -61,6 +64,9 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
           if (data?.items) {
             const fileTree = transformItemsToTree(data.items);
             setState(prev => ({ ...prev, fileTree }));
+          }
+          if (data?.user) {
+            setUserSession(data.user);
           }
         }
       } catch (error) {
@@ -99,6 +105,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
         tags: item.tags || [],
         metadata: parseMetadata(item.metadata),
         collections: item.collections || [],
+        source: item.source || null,
       };
     });
   };
@@ -123,6 +130,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
           tags: item.tags,
           metadata: item.metadata,
           collections: item.collections,
+          source: item.source,
           unsaved: false,
           lastModified: item.updatedAt,
         };
@@ -174,7 +182,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
       }));
     }, []),
 
-    saveTab: useCallback(async (tabId: string) => {
+    saveTab: useCallback(async (tabId: string, metadata?: any) => {
       const tab = state.tabs.find(t => t.id === tabId);
       if (!tab) return;
 
@@ -187,6 +195,7 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
             name: tab.title,
             content: tab.content,
             format: tab.format,
+            ...(metadata && { metadata }),
           }),
         });
 
@@ -447,13 +456,15 @@ export function EditorLayout({ initialData }: EditorLayoutProps) {
               {/* Editor content */}
               <div className="flex-1 min-h-0">
                 {showImport ? (
-                  <ImportScreen />
+                  <ImportScreen onClose={actions.toggleImport} />
                 ) : activeTab ? (
                   <ComprehensiveEditor
                     key={activeTab.id}
                     tab={activeTab}
                     onChange={(value) => actions.updateTab(activeTab.id, value)}
-                    onSave={() => actions.saveTab(activeTab.id)}
+                    onSave={(metadata) => actions.saveTab(activeTab.id, metadata)}
+                    onShowImport={actions.toggleImport}
+                    userSession={userSession || undefined}
                   />
                 ) : (
                   <WelcomeScreen

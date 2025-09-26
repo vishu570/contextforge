@@ -82,6 +82,17 @@ export async function GET(request: NextRequest) {
               },
             },
           },
+          source: {
+            select: {
+              id: true,
+              type: true,
+              url: true,
+              repoOwner: true,
+              repoName: true,
+              branch: true,
+              lastImportedAt: true,
+            },
+          },
         },
         orderBy: { updatedAt: 'desc' },
         take: limit,
@@ -99,6 +110,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       items: transformedItems,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
       pagination: {
         total: totalCount,
         limit,

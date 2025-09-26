@@ -1,0 +1,103 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getUserFromToken } from '@/lib/auth';
+import { createRepositoryTracker } from '@/lib/import/github/repository-tracker';
+import { prisma } from '@/lib/db';
+import { z } from 'zod';
+
+const deleteRequestSchema = z.object({
+  sourceId: z.string().min(1, 'Source ID is required'),
+});
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const validatedData = deleteRequestSchema.parse(body);
+
+    // Get the source record and verify ownership
+    const source = await prisma.source.findFirst({
+      where: {
+        id: validatedData.sourceId,
+        imports: {
+          some: {
+            userId: user.id,
+          },
+        },
+      },
+      include: {
+        items: true,
+        imports: true,
+      },
+    });
+
+    if (!source) {
+      return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
+
+    // Get user's GitHub API key for repository tracker
+    const githubApiKey = await prisma.apiKey.findFirst({
+      where: {
+        userId: user.id,
+        provider: 'github',
+      },
+    });
+
+    if (githubApiKey) {
+      try {
+        // Decrypt the API key
+        const { decryptApiKey } = await import('@/lib/utils');
+        const decryptedToken = decryptApiKey(githubApiKey.encryptedKey);
+
+        // Create repository tracker and delete tracking
+        const repoTracker = createRepositoryTracker(decryptedToken);
+        await repoTracker.deleteRepositoryTracking(validatedData.sourceId);
+      } catch (error) {
+        console.warn('Failed to remove repository tracking:', error);
+        // Continue with deletion even if tracking removal fails
+      }
+    }
+
+    // Count related data
+    const itemCount = source.items.length;
+    const importCount = source.imports.length;
+
+    // Delete the source (cascade will handle related items and imports)
+    await prisma.source.delete({
+      where: { id: validatedData.sourceId },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Repository tracking deleted successfully`,
+      deleted: {
+        repository: source.repoOwner && source.repoName ? `${source.repoOwner}/${source.repoName}` : 'Unknown',
+        items: itemCount,
+        imports: importCount,
+      },
+    });
+
+  } catch (error) {
+    console.error('Delete source API error:', error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Delete failed' },
+      { status: 500 }
+    );
+  }
+}
